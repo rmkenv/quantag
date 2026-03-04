@@ -62,23 +62,30 @@ jobs:
 
       # ── 5. Run the monitor ───────────────────────────────────────────────
       - name: Run QuantAgri Live Monitor
-        env:
-          # Planetary Computer doesn't need an API key — it's free public access.
-          # But if you ever add private data sources, add secrets here like:
-          # MY_API_KEY: ${{ secrets.MY_API_KEY }}
-          PYTHONPATH: quantagri/
         run: |
           MODE="${{ github.event.inputs.mode || 'daily' }}"
           COMMODITIES="${{ github.event.inputs.commodities }}"
 
-          CMD="python quantagri/quantagri_live_monitor.py \
+          # Auto-detect whether files are in repo root or quantagri/ subfolder
+          if [ -f "quantagri_live_monitor.py" ]; then
+            SCRIPT="quantagri_live_monitor.py"
+            YIELD_CSV="official_yields.csv"
+            export PYTHONPATH="."
+          else
+            SCRIPT="quantagri/quantagri_live_monitor.py"
+            YIELD_CSV="quantagri/official_yields.csv"
+            export PYTHONPATH="quantagri"
+          fi
+
+          echo "Using script: $SCRIPT"
+
+          CMD="python $SCRIPT \
             --mode $MODE \
             --output_dir quantagri_live \
-            --yield_csv quantagri/official_yields.csv \
+            --yield_csv $YIELD_CSV \
             --resolution 100 \
             --dashboard"
 
-          # Append commodities filter if provided
           if [ -n "$COMMODITIES" ]; then
             CMD="$CMD --commodities $COMMODITIES"
           fi

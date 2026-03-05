@@ -252,6 +252,9 @@ def compute_sar_metrics(
     print(f"    [SAR] {len(items)} S1 acquisitions")
     empty['sar_n_acquisitions'] = len(items)
 
+    # Re-sign SAR items too — same SAS token expiry risk
+    items = [pc.sign(item) for item in items]
+
     try:
         s1_stack = stackstac.stack(
             items,

@@ -7,7 +7,7 @@ on:
       start_year:
         description: 'Start year'
         required: true
-        default: '2006'
+        default: '2005'
       end_year:
         description: 'End year'
         required: true
@@ -16,6 +16,18 @@ on:
         description: 'Resolution in metres (200 recommended)'
         required: true
         default: '200'
+      commodity:
+        description: 'Single commodity to run (leave blank for all)'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - corn
+          - soy
+          - wheat
+          - cotton
+          - sugar
 
 # Each commodity runs in parallel — keeps each job well under 6h limit.
 # 10 years × 1-2 regions per commodity × ~3 min/season = ~30-60 min per job.
@@ -24,7 +36,8 @@ jobs:
 
   soy-historical:
     runs-on: ubuntu-latest
-    timeout-minutes: 360   # 6 hours max per job
+    timeout-minutes: 360
+    if: github.event.inputs.commodity == 'soy' || github.event.inputs.commodity ==    # 6 hours max per job
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -50,7 +63,8 @@ jobs:
             --start_year ${{ github.event.inputs.start_year || '2016' }} \
             --end_year   ${{ github.event.inputs.end_year   || '2025' }} \
             --resolution ${{ github.event.inputs.resolution || '200'  }} \
-            --output_dir quantagri_historical
+            --output_dir quantagri_historical \
+            --no_resume
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -62,6 +76,7 @@ jobs:
   wheat-historical:
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    if: github.event.inputs.commodity == 'wheat' || github.event.inputs.commodity == 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -84,7 +99,8 @@ jobs:
             --start_year ${{ github.event.inputs.start_year || '2016' }} \
             --end_year   ${{ github.event.inputs.end_year   || '2025' }} \
             --resolution ${{ github.event.inputs.resolution || '200'  }} \
-            --output_dir quantagri_historical
+            --output_dir quantagri_historical \
+            --no_resume
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -95,6 +111,7 @@ jobs:
   corn-historical:
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    if: github.event.inputs.commodity == 'corn' || github.event.inputs.commodity == 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -117,7 +134,8 @@ jobs:
             --start_year ${{ github.event.inputs.start_year || '2016' }} \
             --end_year   ${{ github.event.inputs.end_year   || '2025' }} \
             --resolution ${{ github.event.inputs.resolution || '200'  }} \
-            --output_dir quantagri_historical
+            --output_dir quantagri_historical \
+            --no_resume
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -128,6 +146,7 @@ jobs:
   cotton-historical:
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    if: github.event.inputs.commodity == 'cotton' || github.event.inputs.commodity == 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -150,7 +169,8 @@ jobs:
             --start_year ${{ github.event.inputs.start_year || '2016' }} \
             --end_year   ${{ github.event.inputs.end_year   || '2025' }} \
             --resolution ${{ github.event.inputs.resolution || '200'  }} \
-            --output_dir quantagri_historical
+            --output_dir quantagri_historical \
+            --no_resume
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -161,6 +181,7 @@ jobs:
   sugar-historical:
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    if: github.event.inputs.commodity == 'sugar' || github.event.inputs.commodity == 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -183,7 +204,8 @@ jobs:
             --start_year ${{ github.event.inputs.start_year || '2016' }} \
             --end_year   ${{ github.event.inputs.end_year   || '2025' }} \
             --resolution ${{ github.event.inputs.resolution || '200'  }} \
-            --output_dir quantagri_historical
+            --output_dir quantagri_historical \
+            --no_resume
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -211,7 +211,14 @@ def get_spectral_audit(
     items.sort(key=lambda i: i.datetime)
     print(f"  {len(items)} scenes after deduplication ({warmup_start} → {end_date})")
 
-    # ── 3. Stack ────────────────────────────────────────────────────────
+    # ── 3. Re-sign items before stacking ───────────────────────────────
+    # SAS tokens from the STAC search expire after ~45 min.
+    # For large ROIs the gap between search and Dask fetching pixels
+    # can exceed this, causing: RasterioIOError "not a supported format"
+    # Fix: re-sign every item right before stackstac so tokens are fresh.
+    items = [pc.sign(item) for item in items]
+
+    # ── 4. Stack ────────────────────────────────────────────────────────
     # rescale=False: keep raw DN values (0-10000); we scale in calculate_indices.
     # dtype=float:   avoids the safe-cast ValueError with rescale=False.
     # epsg=3857:     Web Mercator — resolution unit is METRES not degrees.

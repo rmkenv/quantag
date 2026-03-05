@@ -1,12 +1,8 @@
 name: QuantAgri Daily Monitor
 
 on:
-  # Runs every day at 06:00 UTC
-  # (Planetary Computer ingests prior day's S2 scenes by ~04:00 UTC)
   schedule:
     - cron: '0 6 * * *'
-
-  # Also lets you trigger it manually from the GitHub Actions tab
   workflow_dispatch:
     inputs:
       mode:
@@ -26,32 +22,24 @@ on:
 jobs:
   run-monitor:
     runs-on: ubuntu-latest
-    timeout-minutes: 60    # kill if hung — full run should take ~15 min at 100m res
+    timeout-minutes: 60
 
     steps:
 
-      # ── 1. Check out your repo ──────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Set up Python ────────────────────────────────────────────────
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      # ── 3. Install dependencies ─────────────────────────────────────────
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install planetary-computer pystac-client stackstac
-          pip install xarray rioxarray "dask[array]"
-          pip install numpy pandas scipy openpyxl
+          pip install -r requirements.txt
 
-      # ── 4. Pull previous live results from cache ────────────────────────
-      # This is the key step — it restores the rolling CSV from the last run
-      # so each run appends rather than starting from scratch.
       - name: Restore live results cache
         uses: actions/cache@v4
         with:
@@ -60,29 +48,20 @@ jobs:
           restore-keys: |
             quantagri-live-results-
 
-      # ── 5. Run the monitor ───────────────────────────────────────────────
+      - name: List repo files (debug)
+        run: find . -type f | sort
+
       - name: Run QuantAgri Live Monitor
+        env:
+          PYTHONPATH: quantagri
         run: |
           MODE="${{ github.event.inputs.mode || 'daily' }}"
           COMMODITIES="${{ github.event.inputs.commodities }}"
 
-          # Auto-detect whether files are in repo root or quantagri/ subfolder
-          if [ -f "quantagri_live_monitor.py" ]; then
-            SCRIPT="quantagri_live_monitor.py"
-            YIELD_CSV="official_yields.csv"
-            export PYTHONPATH="."
-          else
-            SCRIPT="quantagri/quantagri_live_monitor.py"
-            YIELD_CSV="quantagri/official_yields.csv"
-            export PYTHONPATH="quantagri"
-          fi
-
-          echo "Using script: $SCRIPT"
-
-          CMD="python $SCRIPT \
+          CMD="python quantagri/quantagri_live_monitor.py \
             --mode $MODE \
             --output_dir quantagri_live \
-            --yield_csv $YIELD_CSV \
+            --yield_csv official_yields.csv \
             --resolution 100 \
             --dashboard"
 
@@ -93,24 +72,18 @@ jobs:
           echo "Running: $CMD"
           eval $CMD
 
-      # ── 6. Commit updated live results back to repo ──────────────────────
-      # This writes the new CSV rows directly into your repo so you always
-      # have the latest results accessible via the GitHub UI or raw URL.
       - name: Commit live results
         run: |
           git config user.name  "QuantAgri Bot"
           git config user.email "actions@github.com"
           git add quantagri_live/
-          # Only commit if there are actual changes
           git diff --staged --quiet || git commit -m \
             "chore: live monitor update $(date -u '+%Y-%m-%d %H:%M UTC') [skip ci]"
           git push
 
-      # ── 7. Upload results as downloadable artifact ───────────────────────
-      # Available for 30 days under Actions → your run → Artifacts
       - name: Upload results artifact
         uses: actions/upload-artifact@v4
-        if: always()    # upload even if the run partially failed
+        if: always()
         with:
           name: quantagri-live-${{ github.run_number }}-${{ github.run_attempt }}
           path: |
@@ -119,9 +92,6 @@ jobs:
             quantagri_live/quantagri_monitor.log
           retention-days: 30
 
-      # ── 8. Send alert email if alerts fired ──────────────────────────────
-      # Only runs if quantagri_live_alerts.csv exists and has content.
-      # Uses GitHub's built-in email notification to the repo owner.
       - name: Check for alerts
         id: check_alerts
         run: |
@@ -143,7 +113,6 @@ jobs:
             const lines = alertCsv.trim().split('\n');
             const header = lines[0];
             const newAlerts = lines.slice(1).join('\n');
-
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo:  context.repo.repo,

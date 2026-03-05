@@ -1,0 +1,251 @@
+name: QuantAgri Historical Monthly (10 Year)
+
+on:
+  # Run manually from the Actions tab — this is a one-time/on-demand job
+  workflow_dispatch:
+    inputs:
+      start_year:
+        description: 'Start year'
+        required: true
+        default: '2006'
+      end_year:
+        description: 'End year'
+        required: true
+        default: '2025'
+      resolution:
+        description: 'Resolution in metres (200 recommended)'
+        required: true
+        default: '200'
+
+# Each commodity runs in parallel — keeps each job well under 6h limit.
+# 10 years × 1-2 regions per commodity × ~3 min/season = ~30-60 min per job.
+
+jobs:
+
+  soy-historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360   # 6 hours max per job
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install --upgrade pip && pip install -r requirements.txt
+
+      # Resume cache — if the job is re-run it skips already-completed season-years
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: quantagri_historical/
+          key: historical-soy-${{ github.run_number }}
+          restore-keys: historical-soy-
+
+      - name: Run soy historical
+        env:
+          PYTHONPATH: quantagri
+        run: |
+          python quantagri/quantagri_historical_monthly.py \
+            --commodities soy \
+            --start_year ${{ github.event.inputs.start_year || '2016' }} \
+            --end_year   ${{ github.event.inputs.end_year   || '2025' }} \
+            --resolution ${{ github.event.inputs.resolution || '200'  }} \
+            --output_dir quantagri_historical
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: historical-soy-${{ github.run_number }}
+          path: quantagri_historical/
+          retention-days: 90
+
+  wheat-historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install --upgrade pip && pip install -r requirements.txt
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: quantagri_historical/
+          key: historical-wheat-${{ github.run_number }}
+          restore-keys: historical-wheat-
+      - name: Run wheat historical
+        env:
+          PYTHONPATH: quantagri
+        run: |
+          python quantagri/quantagri_historical_monthly.py \
+            --commodities wheat \
+            --start_year ${{ github.event.inputs.start_year || '2016' }} \
+            --end_year   ${{ github.event.inputs.end_year   || '2025' }} \
+            --resolution ${{ github.event.inputs.resolution || '200'  }} \
+            --output_dir quantagri_historical
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: historical-wheat-${{ github.run_number }}
+          path: quantagri_historical/
+          retention-days: 90
+
+  corn-historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install --upgrade pip && pip install -r requirements.txt
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: quantagri_historical/
+          key: historical-corn-${{ github.run_number }}
+          restore-keys: historical-corn-
+      - name: Run corn historical
+        env:
+          PYTHONPATH: quantagri
+        run: |
+          python quantagri/quantagri_historical_monthly.py \
+            --commodities corn \
+            --start_year ${{ github.event.inputs.start_year || '2016' }} \
+            --end_year   ${{ github.event.inputs.end_year   || '2025' }} \
+            --resolution ${{ github.event.inputs.resolution || '200'  }} \
+            --output_dir quantagri_historical
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: historical-corn-${{ github.run_number }}
+          path: quantagri_historical/
+          retention-days: 90
+
+  cotton-historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install --upgrade pip && pip install -r requirements.txt
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: quantagri_historical/
+          key: historical-cotton-${{ github.run_number }}
+          restore-keys: historical-cotton-
+      - name: Run cotton historical
+        env:
+          PYTHONPATH: quantagri
+        run: |
+          python quantagri/quantagri_historical_monthly.py \
+            --commodities cotton \
+            --start_year ${{ github.event.inputs.start_year || '2016' }} \
+            --end_year   ${{ github.event.inputs.end_year   || '2025' }} \
+            --resolution ${{ github.event.inputs.resolution || '200'  }} \
+            --output_dir quantagri_historical
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: historical-cotton-${{ github.run_number }}
+          path: quantagri_historical/
+          retention-days: 90
+
+  sugar-historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install --upgrade pip && pip install -r requirements.txt
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: quantagri_historical/
+          key: historical-sugar-${{ github.run_number }}
+          restore-keys: historical-sugar-
+      - name: Run sugar historical
+        env:
+          PYTHONPATH: quantagri
+        run: |
+          python quantagri/quantagri_historical_monthly.py \
+            --commodities sugar \
+            --start_year ${{ github.event.inputs.start_year || '2016' }} \
+            --end_year   ${{ github.event.inputs.end_year   || '2025' }} \
+            --resolution ${{ github.event.inputs.resolution || '200'  }} \
+            --output_dir quantagri_historical
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: historical-sugar-${{ github.run_number }}
+          path: quantagri_historical/
+          retention-days: 90
+
+  # Merge all commodity CSVs into one combined file and commit to repo
+  merge-and-commit:
+    runs-on: ubuntu-latest
+    needs: [soy-historical, wheat-historical, corn-historical, cotton-historical, sugar-historical]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all_artifacts/
+          pattern: historical-*
+
+      - name: Merge all CSVs
+        run: |
+          mkdir -p quantagri_historical
+
+          # Copy all per-commodity files
+          for f in all_artifacts/historical-*/quantagri_monthly_*.csv; do
+            fname=$(basename "$f")
+            if [ "$fname" != "quantagri_monthly_ALL.csv" ] && [ -f "$f" ]; then
+              cp "$f" "quantagri_historical/$fname"
+              echo "Copied: $fname"
+            fi
+          done
+
+          # Build combined ALL file — header once, then data rows
+          FIRST=true
+          for f in quantagri_historical/quantagri_monthly_*.csv; do
+            fname=$(basename "$f")
+            [ "$fname" = "quantagri_monthly_ALL.csv" ] && continue
+            if $FIRST; then
+              cp "$f" quantagri_historical/quantagri_monthly_ALL.csv
+              FIRST=false
+            else
+              tail -n +2 "$f" >> quantagri_historical/quantagri_monthly_ALL.csv
+            fi
+          done
+
+          echo "=== Output files ==="
+          wc -l quantagri_historical/*.csv
+
+      - name: Commit historical results
+        run: |
+          git config user.name  "QuantAgri Bot"
+          git config user.email "actions@github.com"
+          git add quantagri_historical/
+          git diff --staged --quiet || git commit -m \
+            "data: 10yr monthly historical ${{ github.event.inputs.start_year }}-${{ github.event.inputs.end_year }} [skip ci]"
+          git push
+
+      - name: Upload merged artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: quantagri-historical-ALL-${{ github.run_number }}
+          path: quantagri_historical/
+          retention-days: 90

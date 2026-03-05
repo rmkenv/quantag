@@ -20,103 +20,242 @@ on:
         default: ''
 
 jobs:
-  run-monitor:
+
+  # Run each active commodity in its own parallel job
+  # so no single job hits the 6-hour limit
+  soy:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-
+    timeout-minutes: 120
     steps:
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
-
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Restore live results cache
+      - run: pip install --upgrade pip && pip install -r requirements.txt
+      - name: Restore cache
         uses: actions/cache@v4
         with:
           path: quantagri_live/
-          key: quantagri-live-results-${{ github.run_number }}
-          restore-keys: |
-            quantagri-live-results-
-
-      - name: List repo files (debug)
-        run: find . -type f | sort
-
-      - name: Run QuantAgri Live Monitor
+          key: quantagri-live-soy-${{ github.run_number }}
+          restore-keys: quantagri-live-soy-
+      - name: Run soy
         env:
           PYTHONPATH: quantagri
         run: |
-          MODE="${{ github.event.inputs.mode || 'daily' }}"
-          COMMODITIES="${{ github.event.inputs.commodities }}"
-
-          CMD="python quantagri/quantagri_live_monitor.py \
-            --mode $MODE \
+          python quantagri/quantagri_live_monitor.py \
+            --mode ${{ github.event.inputs.mode || 'daily' }} \
             --output_dir quantagri_live \
             --yield_csv official_yields.csv \
             --resolution 100 \
-            --dashboard"
+            --commodities soy \
+            --dashboard
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-soy-${{ github.run_number }}
+          path: quantagri_live/
+          retention-days: 7
 
-          if [ -n "$COMMODITIES" ]; then
-            CMD="$CMD --commodities $COMMODITIES"
-          fi
+  wheat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install --upgrade pip && pip install -r requirements.txt
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: quantagri_live/
+          key: quantagri-live-wheat-${{ github.run_number }}
+          restore-keys: quantagri-live-wheat-
+      - name: Run wheat
+        env:
+          PYTHONPATH: quantagri
+        run: |
+          python quantagri/quantagri_live_monitor.py \
+            --mode ${{ github.event.inputs.mode || 'daily' }} \
+            --output_dir quantagri_live \
+            --yield_csv official_yields.csv \
+            --resolution 100 \
+            --commodities wheat \
+            --dashboard
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-wheat-${{ github.run_number }}
+          path: quantagri_live/
+          retention-days: 7
 
-          echo "Running: $CMD"
-          eval $CMD
+  corn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install --upgrade pip && pip install -r requirements.txt
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: quantagri_live/
+          key: quantagri-live-corn-${{ github.run_number }}
+          restore-keys: quantagri-live-corn-
+      - name: Run corn
+        env:
+          PYTHONPATH: quantagri
+        run: |
+          python quantagri/quantagri_live_monitor.py \
+            --mode ${{ github.event.inputs.mode || 'daily' }} \
+            --output_dir quantagri_live \
+            --yield_csv official_yields.csv \
+            --resolution 100 \
+            --commodities corn \
+            --dashboard
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-corn-${{ github.run_number }}
+          path: quantagri_live/
+          retention-days: 7
 
-      - name: Commit live results
+  cotton:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install --upgrade pip && pip install -r requirements.txt
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: quantagri_live/
+          key: quantagri-live-cotton-${{ github.run_number }}
+          restore-keys: quantagri-live-cotton-
+      - name: Run cotton
+        env:
+          PYTHONPATH: quantagri
+        run: |
+          python quantagri/quantagri_live_monitor.py \
+            --mode ${{ github.event.inputs.mode || 'daily' }} \
+            --output_dir quantagri_live \
+            --yield_csv official_yields.csv \
+            --resolution 100 \
+            --commodities cotton \
+            --dashboard
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-cotton-${{ github.run_number }}
+          path: quantagri_live/
+          retention-days: 7
+
+  sugar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install --upgrade pip && pip install -r requirements.txt
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: quantagri_live/
+          key: quantagri-live-sugar-${{ github.run_number }}
+          restore-keys: quantagri-live-sugar-
+      - name: Run sugar
+        env:
+          PYTHONPATH: quantagri
+        run: |
+          python quantagri/quantagri_live_monitor.py \
+            --mode ${{ github.event.inputs.mode || 'daily' }} \
+            --output_dir quantagri_live \
+            --yield_csv official_yields.csv \
+            --resolution 100 \
+            --commodities sugar \
+            --dashboard
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-sugar-${{ github.run_number }}
+          path: quantagri_live/
+          retention-days: 7
+
+  # Merge all results and commit back to repo
+  commit-results:
+    runs-on: ubuntu-latest
+    needs: [soy, wheat, corn, cotton, sugar]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all_artifacts/
+          pattern: live-*
+
+      - name: Merge CSVs into quantagri_live/
+        run: |
+          mkdir -p quantagri_live
+
+          # Merge all quantagri_live_results.csv files — header once, data appended
+          FIRST=true
+          for f in all_artifacts/live-*/quantagri_live_results.csv; do
+            if [ -f "$f" ]; then
+              if $FIRST; then
+                cp "$f" quantagri_live/quantagri_live_results.csv
+                FIRST=false
+              else
+                tail -n +2 "$f" >> quantagri_live/quantagri_live_results.csv
+              fi
+            fi
+          done
+
+          # Merge alerts
+          FIRST=true
+          for f in all_artifacts/live-*/quantagri_live_alerts.csv; do
+            if [ -f "$f" ]; then
+              if $FIRST; then
+                cp "$f" quantagri_live/quantagri_live_alerts.csv
+                FIRST=false
+              else
+                tail -n +2 "$f" >> quantagri_live/quantagri_live_alerts.csv
+              fi
+            fi
+          done
+
+          # Merge logs
+          cat all_artifacts/live-*/quantagri_live/quantagri_monitor.log \
+            >> quantagri_live/quantagri_monitor.log 2>/dev/null || true
+
+          echo "=== Merged results ==="
+          wc -l quantagri_live/*.csv 2>/dev/null || echo "No CSV files yet"
+
+      - name: Commit merged results
         run: |
           git config user.name  "QuantAgri Bot"
           git config user.email "actions@github.com"
           git add quantagri_live/
           git diff --staged --quiet || git commit -m \
-            "chore: live monitor update $(date -u '+%Y-%m-%d %H:%M UTC') [skip ci]"
+            "chore: live monitor $(date -u '+%Y-%m-%d %H:%M UTC') [skip ci]"
           git push
 
-      - name: Upload results artifact
+      - name: Upload merged artifact
         uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: quantagri-live-${{ github.run_number }}-${{ github.run_attempt }}
-          path: |
-            quantagri_live/quantagri_live_results.csv
-            quantagri_live/quantagri_live_alerts.csv
-            quantagri_live/quantagri_monitor.log
+          name: quantagri-live-merged-${{ github.run_number }}
+          path: quantagri_live/
           retention-days: 30
-
-      - name: Check for alerts
-        id: check_alerts
-        run: |
-          if [ -f "quantagri_live/quantagri_live_alerts.csv" ]; then
-            LINES=$(wc -l < quantagri_live/quantagri_live_alerts.csv)
-            if [ "$LINES" -gt 1 ]; then
-              echo "alerts_fired=true"  >> $GITHUB_OUTPUT
-              echo "alert_count=$((LINES-1))" >> $GITHUB_OUTPUT
-            fi
-          fi
-
-      - name: Create GitHub Issue for alerts
-        if: steps.check_alerts.outputs.alerts_fired == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const alertCsv = fs.readFileSync('quantagri_live/quantagri_live_alerts.csv', 'utf8');
-            const lines = alertCsv.trim().split('\n');
-            const header = lines[0];
-            const newAlerts = lines.slice(1).join('\n');
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
-              title: `⚠️ QuantAgri Alert — ${{ steps.check_alerts.outputs.alert_count }} signal(s) fired`,
-              body:  `## QuantAgri Live Monitor Alert\n\n**Run:** ${{ github.run_number }}\n**Date:** ${new Date().toUTCString()}\n\n\`\`\`\n${header}\n${newAlerts}\n\`\`\`\n\n[View full run →](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`,
-              labels: ['quantagri-alert']
-            });

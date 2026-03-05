@@ -47,7 +47,7 @@ jobs:
             --mode ${{ github.event.inputs.mode || 'daily' }} \
             --output_dir quantagri_live \
             --yield_csv official_yields.csv \
-            --resolution 100 \
+            --resolution 200 \
             --commodities soy \
             --dashboard
       - uses: actions/upload-artifact@v4

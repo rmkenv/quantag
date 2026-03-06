@@ -177,38 +177,49 @@ jobs:
       - name: Merge CSVs into quantagri_live/
         run: |
           mkdir -p quantagri_live
+          pip install pandas -q
 
-          # Merge all quantagri_live_results.csv files — header once, data appended
-          FIRST=true
-          for f in all_artifacts/live-*/quantagri_live_results.csv; do
-            if [ -f "$f" ]; then
-              if $FIRST; then
-                cp "$f" quantagri_live/quantagri_live_results.csv
-                FIRST=false
-              else
-                tail -n +2 "$f" >> quantagri_live/quantagri_live_results.csv
-              fi
-            fi
-          done
+          python3 << 'PYEOF'
+          import pandas as pd, os, glob
 
-          # Merge alerts
-          FIRST=true
-          for f in all_artifacts/live-*/quantagri_live_alerts.csv; do
-            if [ -f "$f" ]; then
-              if $FIRST; then
-                cp "$f" quantagri_live/quantagri_live_alerts.csv
-                FIRST=false
-              else
-                tail -n +2 "$f" >> quantagri_live/quantagri_live_alerts.csv
-              fi
-            fi
-          done
+          # Collect all new results from artifacts
+          new_files = glob.glob("all_artifacts/live-*/quantagri_live_results.csv")
+          if not new_files:
+              print("No new result files found")
+              exit(0)
 
-          # Merge logs
-          cat all_artifacts/live-*/quantagri_live/quantagri_monitor.log \
-            >> quantagri_live/quantagri_monitor.log 2>/dev/null || true
+          new_df = pd.concat([pd.read_csv(f) for f in new_files], ignore_index=True)
 
-          echo "=== Merged results ==="
+          # Load existing results from repo (if any)
+          existing_path = "quantagri_live/quantagri_live_results.csv"
+          if os.path.exists(existing_path):
+              existing_df = pd.read_csv(existing_path)
+              combined = pd.concat([existing_df, new_df], ignore_index=True)
+          else:
+              combined = new_df
+
+          # Deduplicate: keep latest run_timestamp per commodity+region+as_of_date
+          combined = combined.sort_values("run_timestamp")
+          combined = combined.drop_duplicates(
+              subset=["commodity", "region_id", "as_of_date"], keep="last"
+          )
+          combined = combined.sort_values(["as_of_date", "commodity", "region_id"])
+          combined.to_csv(existing_path, index=False)
+          print(f"✅ {len(combined)} unique rows saved")
+
+          # Same for alerts
+          alert_files = glob.glob("all_artifacts/live-*/quantagri_live_alerts.csv")
+          if alert_files:
+              alert_df = pd.concat([pd.read_csv(f) for f in alert_files], ignore_index=True)
+              alert_path = "quantagri_live/quantagri_live_alerts.csv"
+              if os.path.exists(alert_path):
+                  existing_alerts = pd.read_csv(alert_path)
+                  alert_df = pd.concat([existing_alerts, alert_df], ignore_index=True)
+                  alert_df = alert_df.drop_duplicates()
+              alert_df.to_csv(alert_path, index=False)
+          PYEOF
+
+          echo "=== Final row counts ==="
           wc -l quantagri_live/*.csv 2>/dev/null || echo "No CSV files yet"
 
       - name: Commit merged results

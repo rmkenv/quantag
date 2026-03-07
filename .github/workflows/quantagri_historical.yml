@@ -70,6 +70,7 @@ jobs:
           git add quantagri_historical/
           git diff --staged --quiet || git commit -m \
             "data: historical ${{ github.event.inputs.commodity }} ${{ github.event.inputs.start_year }}-${{ github.event.inputs.end_year }} [skip ci]"
+          git pull --rebase origin main
           git push
 
       - name: Upload artifact

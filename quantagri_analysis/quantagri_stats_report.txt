@@ -1,6 +1,6 @@
 =================================================================
   QUANTAGRI MONTHLY STATISTICAL REPORT
-  Generated: 2026-03-07 20:49 UTC
+  Generated: 2026-03-07 20:58 UTC
 =================================================================
 
 [1] MONTHLY NDVI SUMMARY (latest month per region)

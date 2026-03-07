@@ -54,6 +54,17 @@ DEFAULT_OUTPUT_DIR  = "./quantagri_historical"
 DEFAULT_RESOLUTION  = 200    # 200m for historical — balances speed vs fidelity
                               # 10 years × 12 regions = ~120 season pulls
 
+# Per-commodity resolution overrides — large ROIs need coarser resolution
+# to fit in the 7GB GitHub Actions runner RAM.
+# These mirror the daily workflow resolutions.
+COMMODITY_RESOLUTION = {
+    'soy':    500,   # Mato Grosso — huge ROI, OOMs at 200m
+    'sugar':  300,   # Sao Paulo + Uttar Pradesh — two large tropical regions
+    'corn':   200,
+    'wheat':  200,
+    'cotton': 200,
+}
+
 
 # ---------------------------------------------------------------------------
 # MONTHLY AGGREGATION
@@ -214,6 +225,11 @@ def run_historical(
         print(f"  {season.commodity.upper()} — {season.label}")
         print(f"{'='*60}")
 
+        # Use per-commodity resolution override if available
+        effective_resolution = COMMODITY_RESOLUTION.get(season.commodity, resolution)
+        if effective_resolution != resolution:
+            print(f"  [RESOLUTION] Using {effective_resolution}m for {season.commodity} (override)")
+
         for year in range(start_year, end_year + 1):
             counter += 1
             key = f"{rk}__{year}"
@@ -232,7 +248,7 @@ def run_historical(
                     geometry_tuple = season.geometry,
                     start_date     = s_date,
                     end_date       = e_date,
-                    resolution     = resolution,
+                    resolution     = effective_resolution,
                     max_cloud_pct  = 80
                 )
 
@@ -255,9 +271,27 @@ def run_historical(
                 print(f"    ✓ {len(monthly_rows)} month-rows: {', '.join(months_found)}")
 
             except MemoryError:
-                print(f"    [MEM ERROR] Try --resolution 300 or higher")
+                # Retry at double the resolution (half the pixels)
+                retry_res = effective_resolution * 2
+                print(f"    [MEM ERROR] Retrying at {retry_res}m...")
+                try:
+                    composites = get_spectral_audit(
+                        geometry_tuple = season.geometry,
+                        start_date     = s_date,
+                        end_date       = e_date,
+                        resolution     = retry_res,
+                        max_cloud_pct  = 80
+                    )
+                    if composites.time.size > 0:
+                        monthly_rows = aggregate_by_month(composites, season, year)
+                        if monthly_rows:
+                            append_rows(monthly_rows, out_path)
+                            completed.add(key)
+                            print(f"    ✓ Retry succeeded at {retry_res}m: {len(monthly_rows)} month-rows")
+                except Exception as e2:
+                    print(f"    [RETRY FAILED] {e2}")
             except Exception as e:
-                print(f"    [ERROR] {e}")
+                print(f"    [ERROR] {type(e).__name__}: {e}")
 
             time.sleep(0.5)
 

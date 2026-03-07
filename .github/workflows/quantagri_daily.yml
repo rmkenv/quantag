@@ -14,15 +14,9 @@ on:
           - daily
           - weekly
           - backfill
-      commodities:
-        description: 'Commodities to run (leave blank for all active)'
-        required: false
-        default: ''
 
 jobs:
 
-  # Run each active commodity in its own parallel job
-  # so no single job hits the 6-hour limit
   soy:
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -81,7 +75,7 @@ jobs:
             --mode ${{ github.event.inputs.mode || 'daily' }} \
             --output_dir quantagri_live \
             --yield_csv official_yields.csv \
-            --resolution 100 \
+            --resolution 200 \
             --commodities wheat \
             --dashboard
       - uses: actions/upload-artifact@v4
@@ -115,7 +109,7 @@ jobs:
             --mode ${{ github.event.inputs.mode || 'daily' }} \
             --output_dir quantagri_live \
             --yield_csv official_yields.csv \
-            --resolution 100 \
+            --resolution 200 \
             --commodities corn \
             --dashboard
       - uses: actions/upload-artifact@v4
@@ -149,7 +143,7 @@ jobs:
             --mode ${{ github.event.inputs.mode || 'daily' }} \
             --output_dir quantagri_live \
             --yield_csv official_yields.csv \
-            --resolution 100 \
+            --resolution 200 \
             --commodities cotton \
             --dashboard
       - uses: actions/upload-artifact@v4
@@ -159,8 +153,6 @@ jobs:
           path: quantagri_live/
           retention-days: 7
 
-
-  # Merge all results and commit back to repo
   commit-results:
     runs-on: ubuntu-latest
     needs: [soy, wheat, corn, cotton]
@@ -174,15 +166,14 @@ jobs:
           path: all_artifacts/
           pattern: live-*
 
-      - name: Merge CSVs into quantagri_live/
+      - name: Merge and deduplicate CSVs
         run: |
           mkdir -p quantagri_live
           pip install pandas -q
 
-          python3 << 'PYEOF'
+          python3 - << 'PYEOF'
           import pandas as pd, os, glob
 
-          # Collect all new results from artifacts
           new_files = glob.glob("all_artifacts/live-*/quantagri_live_results.csv")
           if not new_files:
               print("No new result files found")
@@ -190,7 +181,6 @@ jobs:
 
           new_df = pd.concat([pd.read_csv(f) for f in new_files], ignore_index=True)
 
-          # Load existing results from repo (if any)
           existing_path = "quantagri_live/quantagri_live_results.csv"
           if os.path.exists(existing_path):
               existing_df = pd.read_csv(existing_path)
@@ -198,16 +188,14 @@ jobs:
           else:
               combined = new_df
 
-          # Deduplicate: keep latest run_timestamp per commodity+region+as_of_date
           combined = combined.sort_values("run_timestamp")
           combined = combined.drop_duplicates(
               subset=["commodity", "region_id", "as_of_date"], keep="last"
           )
           combined = combined.sort_values(["as_of_date", "commodity", "region_id"])
           combined.to_csv(existing_path, index=False)
-          print(f"✅ {len(combined)} unique rows saved")
+          print(f"Saved {len(combined)} unique rows")
 
-          # Same for alerts
           alert_files = glob.glob("all_artifacts/live-*/quantagri_live_alerts.csv")
           if alert_files:
               alert_df = pd.concat([pd.read_csv(f) for f in alert_files], ignore_index=True)
@@ -219,16 +207,42 @@ jobs:
               alert_df.to_csv(alert_path, index=False)
           PYEOF
 
-          echo "=== Final row counts ==="
-          wc -l quantagri_live/*.csv 2>/dev/null || echo "No CSV files yet"
-
-      - name: Commit merged results
+      - name: Build email summary
+        id: summary
         run: |
-          git config user.name  "QuantAgri Bot"
+          SUMMARY=$(python3 quantagri/quantagri_email_summary.py quantagri_live/quantagri_live_results.csv)
+          echo "text<<EOF" >> $GITHUB_OUTPUT
+          echo "$SUMMARY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Send daily email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.EMAIL_FROM }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          to: ${{ secrets.EMAIL_TO }}
+          from: QuantAgri Monitor <${{ secrets.EMAIL_FROM }}>
+          subject: "QuantAgri ${{ github.run_number }} — daily results"
+          body: |
+            ${{ steps.summary.outputs.text }}
+
+            Full CSV:
+            https://raw.githubusercontent.com/${{ github.repository }}/main/quantagri_live/quantagri_live_results.csv
+
+            Run log:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Commit results
+        run: |
+          git config user.name "QuantAgri Bot"
           git config user.email "actions@github.com"
           git add quantagri_live/
           git diff --staged --quiet || git commit -m \
             "chore: live monitor $(date -u '+%Y-%m-%d %H:%M UTC') [skip ci]"
+          git pull --rebase origin main
           git push
 
       - name: Upload merged artifact
@@ -237,3 +251,30 @@ jobs:
           name: quantagri-live-merged-${{ github.run_number }}
           path: quantagri_live/
           retention-days: 30
+
+      - name: Check for alerts
+        id: check_alerts
+        run: |
+          if [ -f "quantagri_live/quantagri_live_alerts.csv" ]; then
+            LINES=$(wc -l < quantagri_live/quantagri_live_alerts.csv)
+            if [ "$LINES" -gt 1 ]; then
+              echo "alerts_fired=true" >> $GITHUB_OUTPUT
+              echo "alert_count=$((LINES-1))" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Create GitHub Issue for alerts
+        if: steps.check_alerts.outputs.alerts_fired == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const alertCsv = fs.readFileSync('quantagri_live/quantagri_live_alerts.csv', 'utf8');
+            const lines = alertCsv.trim().split('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `⚠️ QuantAgri Alert — ${{ steps.check_alerts.outputs.alert_count }} signal(s) fired`,
+              body: `## QuantAgri Alert\n\n**Run:** ${{ github.run_number }}\n**Date:** ${new Date().toUTCString()}\n\n\`\`\`\n${lines.join('\n')}\n\`\`\`\n\n[View run →](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`,
+              labels: ['quantagri-alert']
+            });

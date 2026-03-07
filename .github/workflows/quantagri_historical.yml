@@ -22,10 +22,6 @@ on:
         description: 'End year'
         required: true
         default: '2025'
-      resolution:
-        description: 'Resolution in metres'
-        required: true
-        default: '200'
 
 jobs:
   run-historical:
@@ -59,12 +55,13 @@ jobs:
         env:
           PYTHONPATH: quantagri
         run: |
+          # Resolution is set per-commodity inside the script automatically.
+          # No need to pass --resolution — COMMODITY_RESOLUTION dict handles it.
           python quantagri/quantagri_historical_monthly.py \
             --commodities ${{ github.event.inputs.commodity }} \
-            --start_year ${{ github.event.inputs.start_year }} \
-            --end_year ${{ github.event.inputs.end_year }} \
-            --resolution ${{ github.event.inputs.resolution }} \
-            --output_dir quantagri_historical
+            --start_year  ${{ github.event.inputs.start_year }} \
+            --end_year    ${{ github.event.inputs.end_year }} \
+            --output_dir  quantagri_historical
 
       - name: Commit results
         run: |

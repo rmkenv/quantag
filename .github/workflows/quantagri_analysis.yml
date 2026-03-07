@@ -1,0 +1,62 @@
+name: QuantAgri Monthly Analysis
+
+on:
+  # Run on the 1st of each month at 08:00 UTC (after daily has run)
+  schedule:
+    - cron: '0 8 1 * *'
+  # Also run manually any time
+  workflow_dispatch:
+
+jobs:
+  analyse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pandas scipy requests openpyxl
+
+      - name: Update official yields from USDA/CONAB APIs
+        env:
+          PYTHONPATH: quantagri
+        run: |
+          python quantagri/quantagri_yields_updater.py \
+            --yields_csv official_yields.csv
+
+      - name: Run monthly statistical analysis
+        env:
+          PYTHONPATH: quantagri
+        run: |
+          python quantagri/quantagri_monthly_analysis.py \
+            --live_csv       quantagri_live/quantagri_live_results.csv \
+            --historical_csv quantagri_historical/quantagri_monthly_ALL.csv \
+            --yields_csv     official_yields.csv \
+            --output_dir     quantagri_analysis
+
+      - name: Commit results
+        run: |
+          git config user.name "QuantAgri Bot"
+          git config user.email "actions@github.com"
+          git add quantagri_analysis/ official_yields.csv
+          git diff --staged --quiet || git commit -m \
+            "analysis: monthly stats $(date -u '+%Y-%m') [skip ci]"
+          git push
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quantagri-analysis-${{ github.run_number }}
+          path: quantagri_analysis/
+          retention-days: 90

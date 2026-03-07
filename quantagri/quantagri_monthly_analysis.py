@@ -177,39 +177,73 @@ def compute_yield_correlation(
     yields_df:    pd.DataFrame
 ) -> pd.DataFrame:
     """
-    Correlate end-of-season NDVI (season_pct_elapsed > 80%) with official yields.
+    Compute R² of NDVI → yield for EVERY calendar month of the season.
+    This shows which month has the strongest predictive signal —
+    critical for knowing when to act on the data.
+
+    Returns one row per commodity + region + month with:
+        r, r2, p_value, n_years, best_month flag
     """
+    if yields_df.empty:
+        return pd.DataFrame()
+
     rows = []
     for (commodity, region_id), grp in monthly_live.groupby(['commodity', 'region_id']):
-        late_season = grp[grp['season_pct_elapsed'] > 80].copy()
-        if late_season.empty:
-            continue
-
         yield_data = yields_df[
-            (yields_df['commodity'] == commodity) &
-            (yields_df['region_id'] == region_id) &
+            (yields_df['commodity']     == commodity) &
+            (yields_df['region_id']     == region_id) &
             (yields_df['official_yield'] > 0)
         ].set_index('year')['official_yield']
 
-        merged = late_season.set_index('year')['ndvi_eom'].to_frame().join(
-            yield_data.rename('official_yield'), how='inner'
-        ).dropna()
-
-        if len(merged) < 3:
+        if yield_data.empty:
             continue
 
-        r, p = stats.pearsonr(merged['ndvi_eom'], merged['official_yield'])
-        rows.append({
-            'commodity':  commodity,
-            'region_id':  region_id,
-            'r':          round(r, 3),
-            'r2':         round(r**2, 3),
-            'p_value':    round(p, 3),
-            'n_years':    len(merged),
-            'significant': p < 0.1,
-        })
+        # Compute R² for each month separately
+        month_rows = []
+        for month, mgrp in grp.groupby('month'):
+            merged = mgrp.set_index('year')['ndvi_eom'].to_frame().join(
+                yield_data.rename('official_yield'), how='inner'
+            ).dropna()
 
-    return pd.DataFrame(rows)
+            if len(merged) < 3:
+                continue
+
+            r, p = stats.pearsonr(merged['ndvi_eom'], merged['official_yield'])
+
+            # OLS slope and intercept for yield prediction
+            slope, intercept, _, _, se = stats.linregress(
+                merged['ndvi_eom'], merged['official_yield']
+            )
+
+            month_rows.append({
+                'commodity':    commodity,
+                'region_id':    region_id,
+                'month':        int(month),
+                'month_name':   pd.Timestamp(2000, int(month), 1).strftime('%b'),
+                'r':            round(r, 3),
+                'r2':           round(r**2, 3),
+                'p_value':      round(p, 3),
+                'n_years':      len(merged),
+                'ols_slope':    round(slope, 4),
+                'ols_intercept':round(intercept, 4),
+                'ols_stderr':   round(se, 4),
+                'significant':  p < 0.1,
+            })
+
+        if not month_rows:
+            continue
+
+        # Flag the best month (highest R²)
+        best_r2 = max(r['r2'] for r in month_rows)
+        for r in month_rows:
+            r['best_month'] = (r['r2'] == best_r2)
+
+        rows.extend(month_rows)
+
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        df = df.sort_values(['commodity', 'region_id', 'month'])
+    return df
 
 
 # ---------------------------------------------------------------------------
@@ -283,18 +317,25 @@ def write_text_report(
                 f"{row['severity']} {row['direction']}"
             )
 
-    # --- Yield correlations ---
-    lines.append("\n[3] NDVI → YIELD CORRELATIONS\n")
+    # --- Yield correlations by month ---
+    lines.append("\n[3] NDVI → YIELD R² BY MONTH (which month predicts yield best)\n")
     if correlations.empty:
-        lines.append("  Insufficient data for correlation (need 3+ years).")
+        lines.append("  Insufficient data (need 3+ years with yield data).")
+        lines.append("  Run historical workflow + update official_yields.csv first.")
     else:
-        for _, row in correlations.iterrows():
-            sig = "✓ significant" if row['significant'] else ""
-            lines.append(
-                f"  {row['commodity']:<8} {row['region_id']:<22} "
-                f"r={row['r']:.3f}  R²={row['r2']:.3f}  "
-                f"p={row['p_value']:.3f}  n={row['n_years']}  {sig}"
-            )
+        for (commodity, region_id), grp in correlations.groupby(['commodity', 'region_id']):
+            lines.append(f"  {commodity} / {region_id}")
+            lines.append(f"  {'Month':<6} {'R²':>6} {'r':>7} {'p':>7} {'n':>4} {'OLS slope':>10}  ")
+            lines.append(f"  {'-'*52}")
+            for _, row in grp.sort_values('month').iterrows():
+                best  = " ← BEST" if row.get('best_month') else ""
+                sig   = "*" if row['significant'] else " "
+                lines.append(
+                    f"  {row['month_name']:<6} {row['r2']:>6.3f} {row['r']:>7.3f} "
+                    f"{row['p_value']:>7.3f} {row['n_years']:>4}  "
+                    f"{row['ols_slope']:>9.4f}{sig}{best}"
+                )
+            lines.append("")
 
     # --- Velocity trend ---
     lines.append("\n[4] NDVI VELOCITY TREND (season direction)\n")

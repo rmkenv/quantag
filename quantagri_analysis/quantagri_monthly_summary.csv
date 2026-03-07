@@ -1,0 +1,4 @@
+commodity,region_id,year,month,month_label,n_observations,season_pct_elapsed,ndvi_eom,ndvi_month_mean,ndvi_month_std,ndvi_month_min,ndvi_month_max,lswi_eom,lswi_month_mean,velocity_eom,velocity_month_mean,peak_ndvi,peak_ndvi_date,yield_surprise,surprise_pct,calibration_r2,tercile_mean_early,tercile_mean_mid,tercile_mean_late,ndvi_zscore,ndvi_pct_rank,hist_ndvi_mean,hist_ndvi_std,hist_n_years
+soy,mato_grosso_br,2026,3,Mar 2026,2,87.2,0.4081,0.40775,0.0004949747468306073,0.4074,0.4081,0.1034,0.1032,-0.00913,-0.008865,0.4974,2026-01-05,,,,0.3721,0.4797,0.4546,,,,,0
+wheat,kansas_us,2026,3,Mar 2026,3,3.3,0.1649,0.15413333333333332,0.01864841369482491,0.1326,0.1649,-0.1114,-0.1189,0.0027,0.00014999999999999996,0.1649,2026-03-01,,,,,,,,,,,0
+wheat,rostov_ru,2026,3,Mar 2026,3,3.3,0.1647,0.16213333333333332,0.005244362052083496,0.1561,0.1656,-0.1004,-0.07796666666666667,0.0152,0.008466666666666666,0.1647,2026-03-04,,,,,,,,,,,0

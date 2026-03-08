@@ -258,6 +258,28 @@ def get_spectral_audit(
 # SPATIAL SUMMARY
 # ---------------------------------------------------------------------------
 
+def _compute_with_retry(da, retries=4, backoff=10):
+    """Retry dask .compute() on intermittent Azure blob read failures."""
+    import time
+    for attempt in range(retries):
+        try:
+            return da.compute()
+        except Exception as e:
+            err = str(e)
+            retriable = any(k in err for k in [
+                'Read failed', 'RasterioIOError', 'RuntimeError',
+                'not recognized as', 'CPLE_OpenFailed'
+            ])
+            if retriable and attempt < retries - 1:
+                wait = backoff * (2 ** attempt)  # 10s, 20s, 40s
+                print(f"    [RETRY {attempt+1}/{retries-1}] Network error, "
+                      f"retrying in {wait}s: {err[:80]}")
+                time.sleep(wait)
+            else:
+                raise
+    return da.compute()
+
+
 def spatial_mean(
     composites: xr.Dataset,
     variables:  list = None
@@ -265,6 +287,7 @@ def spatial_mean(
     """
     Spatial mean over x/y → one row per composite timestep.
     Triggers Dask computation (data actually downloads here).
+    Retries up to 4x on intermittent Azure blob read failures.
 
     Returns pd.DataFrame with columns: time, NDVI, LSWI, NDVI_velocity
     """
@@ -274,7 +297,7 @@ def spatial_mean(
     series_list = []
     for var in variables:
         if var in composites:
-            s = composites[var].mean(dim=['x', 'y']).compute()
+            s = _compute_with_retry(composites[var].mean(dim=['x', 'y']))
             series_list.append(s.to_series().rename(var))
 
     if not series_list:

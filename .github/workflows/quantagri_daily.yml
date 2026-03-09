@@ -218,7 +218,7 @@ jobs:
 
       - name: Train / update ML models
         env:
-          PYTHONPATH: quantagri
+          PYTHONPATH: ${{ github.workspace }}/quantagri/ml
         run: |
           python3 quantagri/ml/train.py \
             --sat_csv quantagri_live/quantagri_live_results.csv \
@@ -229,7 +229,7 @@ jobs:
 
       - name: Generate signal scorecard
         env:
-          PYTHONPATH: quantagri
+          PYTHONPATH: ${{ github.workspace }}/quantagri/ml
         run: |
           python3 quantagri/ml/score.py \
             --live_csv quantagri_live/quantagri_live_results.csv \
@@ -242,7 +242,6 @@ jobs:
           git config user.name "QuantAgri Bot"
           git config user.email "actions@github.com"
 
-          # Create ml_models dir if it doesn't exist yet
           mkdir -p ml_models
           touch ml_models/.gitkeep
 

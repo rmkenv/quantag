@@ -1,54 +1,68 @@
-# QuantAgri — Live Satellite Monitor
+# QuantAgri — Live Satellite Monitor + ML Signal Engine
 
 Automated daily pipeline pulling Sentinel-2 data from
 **Microsoft Planetary Computer** (free, no account needed) to keep
 agricultural commodity spectral metrics live, with monthly statistical
-analysis and automatic yield forecast updates.
+analysis, automatic yield forecast updates, and a machine learning layer
+that generates LONG/SHORT/NEUTRAL trading signals from satellite data.
 
 ---
 
 ## Repo Structure
 
 ```
-quantagri/
-├── quantagri_spectral_velocity_pc.py   ← Sentinel-2 STAC query, cloud mask, NDVI/LSWI composites
-├── quantagri_commodity_config.py       ← 12 growing season configs
-├── quantagri_metrics_engine_pc.py      ← NDVI/LSWI/velocity/SAR metrics engine
-├── quantagri_batch_runner_pc.py        ← Historical batch runner
-├── quantagri_live_monitor.py           ← Daily live monitor
-├── quantagri_historical_monthly.py     ← 10-year historical monthly aggregator
-├── quantagri_backtest_aggregator.py    ← Excel workbook builder
-├── quantagri_yields_updater.py         ← Auto-updates official_yields.csv from USDA/CONAB APIs
-└── quantagri_monthly_analysis.py       ← Monthly aggregation + statistical analysis
-
-.github/
-└── workflows/
-    ├── quantagri_daily.yml             ← Runs every day at 06:00 UTC
-    ├── quantagri_historical.yml        ← One-time 10-year historical run (manual trigger)
-    └── quantagri_analysis.yml          ← Runs 1st of each month at 08:00 UTC
-
-official_yields.csv                     ← USDA/CONAB yield forecasts (repo root)
-requirements.txt                        ← Python dependencies (repo root)
-
-quantagri_live/                         ← Created by daily monitor
-├── quantagri_live_results.csv          ← Rolling live results (one row per region per day)
-├── quantagri_live_alerts.csv           ← Alert rows only
-└── quantagri_monitor.log               ← Run log
-
-quantagri_historical/                   ← Created by historical workflow
-├── quantagri_monthly_soy_mato_grosso_br.csv
-├── quantagri_monthly_wheat_kansas_us.csv
-├── quantagri_monthly_wheat_rostov_ru.csv
-├── quantagri_monthly_corn_iowa_us.csv
-├── quantagri_monthly_corn_illinois_us.csv
-├── quantagri_monthly_cotton_*.csv
-└── quantagri_monthly_ALL.csv           ← All commodities combined
-
-quantagri_analysis/                     ← Created by monthly analysis workflow
-├── quantagri_monthly_summary.csv       ← Daily results aggregated to monthly
-├── quantagri_anomaly_report.csv        ← Rows flagged as anomalous (|z| >= 1.5σ)
-├── quantagri_correlations.csv          ← R² by month for each commodity/region
-└── quantagri_stats_report.txt          ← Human-readable summary report
+quantag/
+├── .github/
+│   └── workflows/
+│       ├── quantagri_daily.yml          ← Runs every day at 06:00 UTC
+│       ├── quantagri_historical.yml     ← One-time 10-year historical run (manual)
+│       └── quantagri_analysis.yml       ← Runs 1st of each month at 08:00 UTC
+│
+├── quantagri/
+│   ├── quantagri_spectral_velocity_pc.py   ← Sentinel-2 STAC query, cloud mask, NDVI/LSWI composites
+│   ├── quantagri_commodity_config.py       ← 12 growing season configs
+│   ├── quantagri_metrics_engine_pc.py      ← NDVI/LSWI/velocity/SAR metrics engine
+│   ├── quantagri_batch_runner_pc.py        ← Historical batch runner
+│   ├── quantagri_live_monitor.py           ← Daily live monitor
+│   ├── quantagri_historical_monthly.py     ← 10-year historical monthly aggregator
+│   ├── quantagri_backtest_aggregator.py    ← Excel workbook builder
+│   ├── quantagri_yields_updater.py         ← Auto-updates official_yields.csv from USDA/CONAB APIs
+│   ├── quantagri_monthly_analysis.py       ← Monthly aggregation + statistical analysis
+│   │
+│   └── ml/                                 ← ML signal engine
+│       ├── __init__.py
+│       ├── features.py                     ← Season-level feature engineering
+│       ├── models.py                       ← LightGBM + Ridge yield prediction ensemble
+│       ├── anomaly.py                      ← Isolation Forest anomaly detector
+│       ├── phenology.py                    ← Crop stage / changepoint extraction
+│       ├── signals.py                      ← Yield surprise classifier (LONG/SHORT/NEUTRAL)
+│       └── train.py                        ← CLI trainer — run via workflow or manually
+│
+├── quantagri_live/                         ← Created by daily monitor
+│   ├── quantagri_live_results.csv          ← Rolling live results (one row per region per day)
+│   ├── quantagri_live_alerts.csv           ← Alert rows only
+│   └── quantagri_monitor.log              ← Run log
+│
+├── quantagri_historical/                   ← Created by historical workflow
+│   ├── quantagri_monthly_soy_mato_grosso_br.csv
+│   ├── quantagri_monthly_wheat_kansas_us.csv
+│   ├── quantagri_monthly_wheat_rostov_ru.csv
+│   ├── quantagri_monthly_corn_iowa_us.csv
+│   ├── quantagri_monthly_corn_illinois_us.csv
+│   ├── quantagri_monthly_cotton_*.csv
+│   └── quantagri_monthly_ALL.csv           ← All commodities combined
+│
+├── quantagri_analysis/                     ← Created by monthly analysis workflow
+│   ├── quantagri_monthly_summary.csv       ← Daily results aggregated to monthly
+│   ├── quantagri_anomaly_report.csv        ← Rows flagged as anomalous (|z| >= 1.5σ)
+│   ├── quantagri_correlations.csv          ← R² by month for each commodity/region
+│   └── quantagri_stats_report.txt          ← Human-readable summary report
+│
+├── ml_models/                              ← Persisted trained models (auto-updated daily)
+│   └── .gitkeep
+│
+├── official_yields.csv                     ← USDA/CONAB yield forecasts
+└── requirements.txt                        ← Python dependencies
 ```
 
 ---
@@ -76,7 +90,7 @@ The daily monitor automatically detects which seasons are active and only runs t
 
 Your repo layout must be:
 ```
-quantagri/         ← all .py files go here
+quantagri/            ← all .py files go here (including ml/ subfolder)
 official_yields.csv   ← repo root
 requirements.txt      ← repo root
 .github/workflows/quantagri_daily.yml
@@ -87,7 +101,7 @@ requirements.txt      ← repo root
 Upload `.py` files via GitHub UI:
 1. Go to `https://github.com/rmkenv/quantag/tree/main/quantagri`
 2. Click **Add file → Upload files**
-3. Upload all `.py` files individually (not inside a folder)
+3. Upload all `.py` files. For the `ml/` subfolder, create it first via **Add file → Create new file**, type `ml/__init__.py`, then upload the rest.
 
 ### Step 2 — Give Actions permission to push commits
 
@@ -96,7 +110,16 @@ Upload `.py` files via GitHub UI:
 3. Select **"Read and write permissions"**
 4. Click **Save**
 
-### Step 3 — Test the daily monitor
+### Step 3 — Run the historical baseline (do this first)
+
+The ML models and z-score analysis need historical data to train on. Run the historical workflow before expecting ML signals to populate.
+
+1. Click **Actions → QuantAgri Historical Monthly → Run workflow**
+2. Pick `wheat` first (fastest), then repeat for `corn`, `cotton`, `soy`
+3. Runtime: ~30–90 min per commodity
+4. Recommended order: wheat → corn → cotton → soy
+
+### Step 4 — Test the daily monitor
 
 1. Click **Actions → QuantAgri Daily Monitor**
 2. Click **"Run workflow"** → mode: `daily` → **Run workflow**
@@ -113,10 +136,10 @@ Upload `.py` files via GitHub UI:
 4 commodity jobs spin up in parallel (soy, wheat, corn, cotton)
     ↓
 Each job:
-    Installs Python dependencies (~2 min)
+    Installs Python dependencies
     Restores quantagri_live/ from cache
     Checks which seasons are active today
-    Fetches new Sentinel-2 scenes (re-signs SAS tokens to prevent expiry)
+    Fetches new Sentinel-2 scenes from Planetary Computer
     Builds season-to-date NDVI/LSWI/velocity composites
     Computes yield surprise vs USDA/CONAB forecast
     Writes row to quantagri_live_results.csv
@@ -124,7 +147,9 @@ Each job:
 commit-results job:
     Downloads all 4 commodity artifacts
     Merges and deduplicates CSVs (by commodity + region + date, keeps latest)
-    Commits quantagri_live/ back to repo
+    Installs ML dependencies (lightgbm, scikit-learn, shap, ruptures)
+    Retrains ML models on updated data → saves to ml_models/
+    Commits quantagri_live/ and ml_models/ back to repo
     Uploads merged artifact (30-day retention)
     ↓
 If alert thresholds breached → opens GitHub Issue (triggers email)
@@ -142,13 +167,10 @@ Run once per commodity — resumable if it times out.
 3. Leave start/end year as 2016/2025
 4. Runtime: ~30–90 min per commodity
 
-**Recommended order:** wheat → corn → cotton → soy → sugar
-
 Output: monthly `ndvi_mean`, `ndvi_max`, `lswi_mean`, `velocity_mean`
 per region per year — 10 years × growing season months.
 
-This data powers the z-score and R² calculations in the analysis workflow.
-Run the historical workflow before expecting those columns to populate.
+This data is required before the ML models and z-score columns will populate.
 
 ---
 
@@ -158,7 +180,7 @@ Runs automatically on the 1st of every month. Can also be triggered manually.
 
 **Step 1 — Yield updater**
 Hits USDA PSD API and CONAB API, updates `official_yields.csv` automatically.
-Regions without a free API (Xinjiang cotton, Indian sugar) are flagged for manual update.
+Regions without a free API (Xinjiang cotton, Indian sugar, Rostov wheat) are flagged for manual update.
 
 **Step 2 — Monthly aggregation**
 Groups daily live results by commodity + region + year + month:
@@ -193,15 +215,90 @@ The OLS slope = bushels/acre per 0.1 NDVI unit change.
 
 ---
 
-## Resolution Settings
+## ML Signal Engine
 
-Set automatically per commodity — no manual configuration needed.
+The `quantagri/ml/` layer runs automatically after each daily data merge and produces three types of output.
 
-| Commodity | Resolution | Reason |
-|-----------|-----------|--------|
-| Soy (Mato Grosso) | 500m | ~1.1M km² ROI, OOMs at finer resolution |
-| Sugar | 300m | Two large tropical regions |
-| Corn, Wheat, Cotton | 200m | Medium ROIs |
+### What the models tell you
+
+**1. YieldModel → predicted yield**
+
+A number in the crop's native unit (bu/ac for US corn/soy/wheat, bag/ha for Brazil soy, t/ha for Rostov wheat). Compare against the current USDA WASDE or CONAB forecast — the gap is your surprise estimate.
+
+```
+corn/iowa_us     → predicted: 174.1 bu/ac  |  USDA: 178.0  →  -3.9  bearish
+soy/illinois_us  → predicted:  53.4 bu/ac  |  USDA:  52.0  →  +1.4  bullish
+```
+
+Uses a LightGBM + Ridge ensemble with time-series cross-validation. LightGBM gets 60% weight because it captures non-linear stress interactions (e.g. high NDVI but low LSWI = green but water-stressed) that Ridge misses.
+
+**2. AnomalyDetector → anomaly score**
+
+A score between roughly -0.3 and +0.2. Below -0.05 means the current NDVI/LSWI/velocity pattern is outside the historical envelope — something unusual is happening. Fires 4–6 weeks before yield impacts appear in official crop condition reports. Does not tell you direction — pair with the yield model for that.
+
+```
+wheat/kansas_us  → anomaly_score: -0.18  ⚠️ FLAG
+soy/illinois_us  → anomaly_score: +0.04  ✓ normal
+```
+
+**3. YieldSurpriseClassifier → LONG / SHORT / NEUTRAL**
+
+The most directly actionable output. Predicts whether the crop will beat or miss the official consensus forecast, with a probability and confidence tier.
+
+```
+corn/illinois_us    → LONG    | prob: 0.71 | confidence: high
+soy/mato_grosso_br  → SHORT   | prob: 0.28 | confidence: medium
+wheat/kansas_us     → NEUTRAL | prob: 0.51 | confidence: low
+```
+
+Confidence tiers:
+- **high** — probability ≥ 0.75 or ≤ 0.25 → consider full position
+- **medium** — 0.65–0.75 or 0.25–0.35 → consider half position
+- **low / NEUTRAL** — 0.35–0.65 → no edge, stay flat
+
+### Reading signals together
+
+The highest-conviction setups are when multiple models agree:
+
+| Scenario | Interpretation | Action |
+|----------|---------------|--------|
+| Anomaly flagged + model predicts miss + SHORT | Strong bearish consensus | High conviction short |
+| No anomaly + model predicts beat + LONG | Strong bullish consensus | High conviction long |
+| Anomaly flagged + NEUTRAL signal | Unusual pattern, direction unclear | Watch, wait |
+| Yield miss predicted, no anomaly | Gradual underperformance | Mild bearish lean |
+| Models disagree | Conflicting signals | Stay flat |
+
+### Signal timing
+
+The edge is sharpest mid-season when you have enough satellite composites to be confident but USDA hasn't yet revised its numbers:
+
+| Crop | Best signal window |
+|------|-------------------|
+| US corn / soy | June – August |
+| US wheat (Kansas) | April – May |
+| Rostov wheat | April – May |
+| Brazil soy | November – January |
+
+### Running the trainer manually
+
+```bash
+python3 quantagri/ml/train.py \
+  --sat_csv quantagri_live/quantagri_live_results.csv \
+  --yield_csv official_yields.csv \
+  --model_dir ml_models
+```
+
+### Getting SHAP explanations
+
+```python
+from quantagri.ml.signals import YieldSurpriseClassifier
+import pickle, pandas as pd
+
+clf = pickle.load(open("ml_models/corn_iowa_us_classifier.pkl", "rb"))
+feat_row = pd.Series({...})  # one row of season features
+print(clf.explain(feat_row))
+# → {'ndvi_max_peak': 0.42, 'lswi_mean_avg': 0.18, 'vel_mean_avg': -0.09, ...}
+```
 
 ---
 
@@ -212,6 +309,8 @@ One row per active region per day in `quantagri_live_results.csv`:
 | Column | Example | Notes |
 |--------|---------|-------|
 | `as_of_date` | 2026-03-06 | Date of latest satellite data |
+| `commodity` | corn | Crop |
+| `region_id` | iowa_us | Region |
 | `current_ndvi` | 0.407 | Latest composite value |
 | `current_ndvi_velocity` | -0.0086 | dNDVI/day — rate of change |
 | `peak_ndvi` | 0.497 | Season high |
@@ -221,9 +320,7 @@ One row per active region per day in `quantagri_live_results.csv`:
 | `surprise_pct` | +2.8% | Relative surprise |
 | `calibration_r2` | 0.78 | Historical NDVI→yield fit |
 
-**Note:** `tercile_mean_*`, `velocity_std`, `yield_surprise`, `calibration_r2`
-are blank early in the season — they need multiple composites to compute
-and fill in naturally over 3–4 weeks.
+**Note:** `tercile_mean_*`, `velocity_std`, `yield_surprise`, and `calibration_r2` are blank early in the season — they need multiple composites to compute and fill in naturally over 3–4 weeks.
 
 ---
 
@@ -240,6 +337,15 @@ https://raw.githubusercontent.com/rmkenv/quantag/main/quantagri_live/quantagri_l
 **Option C — Download artifact**
 Actions → latest run → Artifacts → `quantagri-live-merged-N`
 
+**Option D — pandas**
+```python
+import pandas as pd
+df = pd.read_csv(
+    "https://raw.githubusercontent.com/rmkenv/quantag/main/quantagri_live/quantagri_live_results.csv"
+)
+print(df.tail(10).to_string())
+```
+
 ---
 
 ## Alerts
@@ -249,29 +355,41 @@ Thresholds in `quantagri/quantagri_live_monitor.py`:
 SURPRISE_ALERT_BPS = 1.5   # bpa absolute value
 VELOCITY_ALERT     = 0.015  # dNDVI/day
 ```
-When breached, GitHub opens an Issue and you receive an email.
+When breached, GitHub opens an Issue and you receive an email notification.
 
 ---
 
 ## Updating official_yields.csv
 
 The monthly analysis workflow updates yields automatically from USDA/CONAB APIs.
-For manual updates (e.g. after a major WASDE revision):
+For manual updates after a major WASDE revision:
 
 1. Edit `official_yields.csv` in the repo root
 2. Commit: `"Update yields — WASDE March 2026"`
 
 **Key WASDE dates to watch:**
+
 | Month | What changes |
 |-------|-------------|
 | March | Winter wheat baseline (Kansas) |
-| February/March | Brazilian soy CONAB monthly |
+| February / March | Brazilian soy CONAB monthly |
 | May | First corn/cotton new-crop forecast |
 | August | Most important — first field-survey corn/soy estimate |
 | November | Near-final corn/soy/cotton |
 
-Regions without API coverage (Xinjiang cotton, Indian sugar, Rostov wheat)
-must be updated manually from IGC or local ministry reports.
+Regions without API coverage (Xinjiang cotton, Indian sugar, Rostov wheat) must be updated manually from IGC or local ministry reports.
+
+---
+
+## Resolution Settings
+
+Set automatically per commodity — no manual configuration needed.
+
+| Commodity | Resolution | Reason |
+|-----------|-----------|--------|
+| Soy (Mato Grosso) | 500m | ~1.1M km² ROI, OOMs at finer resolution |
+| Sugar | 300m | Two large tropical regions |
+| Corn, Wheat, Cotton | 200m | Medium ROIs |
 
 ---
 
@@ -280,7 +398,7 @@ must be updated manually from IGC or local ministry reports.
 | Item | Free limit | QuantAgri usage |
 |------|-----------|-----------------|
 | Minutes/month | 2,000 | ~30 min/day × 30 + ~30 min/month analysis = ~930 min ✅ |
-| Storage | 500MB | CSVs ~50KB/month ✅ |
+| Storage | 500MB | CSVs + model files ~5MB/month ✅ |
 | Concurrent jobs | 20 | 5 parallel (daily) ✅ |
 
 ---
@@ -299,4 +417,6 @@ must be updated manually from IGC or local ministry reports.
 | Historical job times out | Re-run — resumes from where it left off, skips completed season-years |
 | Z-scores all blank in analysis | Run historical workflow first to build the baseline |
 | `yield_surprise` blank | Add current season year rows to `official_yields.csv` with forecast values |
+| ML models all show NEUTRAL | Needs 3+ seasons per commodity — run historical workflow first |
+| `lightgbm` not found in ML step | Added to workflow install step — re-run the daily workflow to pick up |
 | Workflow not running at scheduled time | GitHub delays scheduled runs up to 30 min under load |

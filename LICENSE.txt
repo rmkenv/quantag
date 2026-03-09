@@ -1,6 +1,6 @@
 QUANTAGRI PROPRIETARY LICENSE
 
-Copyright (c) 2026 rmkenv. All rights reserved.
+Copyright (c) 2026 RMK Consulting LLC. All rights reserved.
 
 NOTICE: This software and all associated files, documentation, algorithms,
 models, and data pipelines (collectively, the "Software") are the exclusive

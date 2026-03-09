@@ -36,11 +36,13 @@ quantag/
 │       ├── anomaly.py                      ← Isolation Forest anomaly detector
 │       ├── phenology.py                    ← Crop stage / changepoint extraction
 │       ├── signals.py                      ← Yield surprise classifier (LONG/SHORT/NEUTRAL)
+│       ├── score.py                        ← Signal scorer — combines ML + z-scores into conviction score
 │       └── train.py                        ← CLI trainer — run via workflow or manually
 │
 ├── quantagri_live/                         ← Created by daily monitor
 │   ├── quantagri_live_results.csv          ← Rolling live results (one row per region per day)
 │   ├── quantagri_live_alerts.csv           ← Alert rows only
+│   ├── quantagri_signal_scorecard.csv      ← Conviction scores per commodity/region
 │   └── quantagri_monitor.log              ← Run log
 │
 ├── quantagri_historical/                   ← Created by historical workflow
@@ -149,9 +151,11 @@ commit-results job:
     Merges and deduplicates CSVs (by commodity + region + date, keeps latest)
     Installs ML dependencies (lightgbm, scikit-learn, shap, ruptures)
     Retrains ML models on updated data → saves to ml_models/
+    Generates signal scorecard → saves to quantagri_live/quantagri_signal_scorecard.csv
     Commits quantagri_live/ and ml_models/ back to repo
     Uploads merged artifact (30-day retention)
     ↓
+If strong signal (conviction ±3 or ±4) → opens GitHub Issue (triggers email)
 If alert thresholds breached → opens GitHub Issue (triggers email)
 ```
 
@@ -217,7 +221,28 @@ The OLS slope = bushels/acre per 0.1 NDVI unit change.
 
 ## ML Signal Engine
 
-The `quantagri/ml/` layer runs automatically after each daily data merge and produces three types of output.
+The `quantagri/ml/` layer runs automatically after each daily data merge and produces three types of output, combined into a single conviction score in `quantagri_signal_scorecard.csv`.
+
+### Conviction Score
+
+Each commodity/region gets a score from -4 to +4 built from four components:
+
+| Component | Max contribution | Source |
+|-----------|-----------------|--------|
+| ML signal direction (LONG/SHORT) | ±2 | YieldSurpriseClassifier |
+| ML confidence (high/medium) | ±1 | Classifier probability |
+| Anomaly flag | +1 | IsolationForest score < -0.05 |
+| Z-score alignment | ±1 | Historical monthly analysis |
+
+| Score | Conviction | Action |
+|-------|-----------|--------|
+| ±4 | Maximum | Act with full size |
+| ±3 | Strong | Act with normal size |
+| ±2 | Moderate | Small position or wait |
+| ±1 | Weak lean | Watch only |
+| 0 | Neutral | Stay flat |
+
+A GitHub Issue is opened (email sent) whenever any commodity hits ±3 or ±4.
 
 ### What the models tell you
 
@@ -284,6 +309,7 @@ The edge is sharpest mid-season when you have enough satellite composites to be 
 ```bash
 python3 quantagri/ml/train.py \
   --sat_csv quantagri_live/quantagri_live_results.csv \
+  --historical_csv quantagri_historical/quantagri_monthly_ALL.csv \
   --yield_csv official_yields.csv \
   --model_dir ml_models
 ```
@@ -324,6 +350,24 @@ One row per active region per day in `quantagri_live_results.csv`:
 
 ---
 
+## Signal Scorecard — Column Reference
+
+One row per commodity/region in `quantagri_live/quantagri_signal_scorecard.csv`:
+
+| Column | Example | Notes |
+|--------|---------|-------|
+| `commodity` | corn | Crop |
+| `region_id` | iowa_us | Region |
+| `conviction_score` | +3 | -4 to +4 — the bottom line |
+| `conviction` | STRONG LONG 🟢 | Human-readable label |
+| `ml_signal` | LONG | LONG / SHORT / NEUTRAL |
+| `ml_beat_prob` | 0.76 | Probability of beating consensus |
+| `ml_confidence` | high | high / medium / low |
+| `anomaly_score` | -0.14 | Below -0.05 = flagged |
+| `yield_surprise` | +2.1 | bpa vs USDA |
+
+---
+
 ## Viewing Results
 
 **Option A — GitHub UI**
@@ -332,6 +376,7 @@ One row per active region per day in `quantagri_live_results.csv`:
 **Option B — Raw CSV (paste into Excel or Google Sheets)**
 ```
 https://raw.githubusercontent.com/rmkenv/quantag/main/quantagri_live/quantagri_live_results.csv
+https://raw.githubusercontent.com/rmkenv/quantag/main/quantagri_live/quantagri_signal_scorecard.csv
 ```
 
 **Option C — Download artifact**
@@ -356,6 +401,8 @@ SURPRISE_ALERT_BPS = 1.5   # bpa absolute value
 VELOCITY_ALERT     = 0.015  # dNDVI/day
 ```
 When breached, GitHub opens an Issue and you receive an email notification.
+
+Strong ML signals (conviction ±3 or ±4) open a separate Issue with the full scorecard table.
 
 ---
 
@@ -419,4 +466,6 @@ Set automatically per commodity — no manual configuration needed.
 | `yield_surprise` blank | Add current season year rows to `official_yields.csv` with forecast values |
 | ML models all show NEUTRAL | Needs 3+ seasons per commodity — run historical workflow first |
 | `lightgbm` not found in ML step | Added to workflow install step — re-run the daily workflow to pick up |
+| `ImportError: attempted relative import with no known parent package` | PYTHONPATH must be set to `${{ github.workspace }}/quantagri/ml` (not just `quantagri`) in the Train and Scorecard workflow steps |
 | Workflow not running at scheduled time | GitHub delays scheduled runs up to 30 min under load |
+| `fatal: pathspec 'ml_models/' did not match any files` | Create `ml_models/.gitkeep` in repo root — the commit step now handles this automatically |

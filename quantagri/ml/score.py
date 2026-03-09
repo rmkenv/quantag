@@ -30,7 +30,7 @@ def compute_signal_score(
     rows = []
 
     for (commodity, region), grp in live.groupby(["commodity", "region_id"]):
-        # Find date column in live CSV
+        # Auto-detect date column in live CSV
         live_date_col = next(
             (c for c in ["as_of_date", "date", "year_month", "run_date"]
              if c in grp.columns),
@@ -131,16 +131,16 @@ def compute_signal_score(
             conviction = "STRONG SHORT 🔴"
 
         rows.append({
-            "commodity":       commodity,
-            "region_id":       region,
-            "as_of_date":      latest.get(live_date_col) if live_date_col else None,
+            "commodity":        commodity,
+            "region_id":        region,
+            "as_of_date":       latest.get(live_date_col) if live_date_col else None,
             "conviction_score": score,
-            "conviction":      conviction,
-            "ml_signal":       signal,
-            "ml_beat_prob":    round(float(prob), 3),
-            "ml_confidence":   confidence,
-            "anomaly_score":   round(float(anomaly_score), 3) if pd.notna(anomaly_score) else None,
-            "yield_surprise":  latest.get("yield_surprise"),
+            "conviction":       conviction,
+            "ml_signal":        signal,
+            "ml_beat_prob":     round(float(prob), 3),
+            "ml_confidence":    confidence,
+            "anomaly_score":    round(float(anomaly_score), 3) if pd.notna(anomaly_score) else None,
+            "yield_surprise":   latest.get("yield_surprise"),
             **{f"component_{k}": v for k, v in components.items()},
         })
 

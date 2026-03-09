@@ -226,6 +226,16 @@ jobs:
             --model_dir ml_models
         continue-on-error: true
 
+      - name: Generate signal scorecard
+        env:
+          PYTHONPATH: quantagri
+        run: |
+          python3 quantagri/ml/score.py \
+            --live_csv quantagri_live/quantagri_live_results.csv \
+            --analysis_csv quantagri_analysis/quantagri_monthly_summary.csv \
+            --output_csv quantagri_live/quantagri_signal_scorecard.csv
+        continue-on-error: true
+
       - name: Commit results
         run: |
           git config user.name "QuantAgri Bot"
@@ -256,6 +266,43 @@ jobs:
             fi
           fi
 
+      - name: Check for strong signals
+        id: check_signals
+        run: |
+          if [ -f "quantagri_live/quantagri_signal_scorecard.csv" ]; then
+            python3 - << 'PYEOF'
+          import pandas as pd, os
+
+          df = pd.read_csv("quantagri_live/quantagri_signal_scorecard.csv")
+          strong = df[df["conviction_score"].abs() >= 3]
+
+          if not strong.empty:
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write("strong_signals=true\n")
+                  f.write(f"strong_signal_count={len(strong)}\n")
+              print(f"Strong signals found: {len(strong)}")
+              print(strong[["commodity","region_id","conviction","conviction_score"]].to_string(index=False))
+          else:
+              print("No strong signals today")
+          PYEOF
+          fi
+
+      - name: Create GitHub Issue for strong signals
+        if: steps.check_signals.outputs.strong_signals == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const csv = fs.readFileSync('quantagri_live/quantagri_signal_scorecard.csv', 'utf8');
+            const lines = csv.trim().split('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `📡 QuantAgri Strong Signal — ${{ steps.check_signals.outputs.strong_signal_count }} conviction trade(s)`,
+              body: `## QuantAgri Signal Scorecard\n\n**Run:** ${{ github.run_number }}\n**Date:** ${new Date().toUTCString()}\n\n\`\`\`\n${lines.join('\n')}\n\`\`\`\n\n[View run →](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n[View scorecard →](https://raw.githubusercontent.com/${{ github.repository }}/main/quantagri_live/quantagri_signal_scorecard.csv)`,
+              labels: ['quantagri-signal']
+            });
+
       - name: Create GitHub Issue for alerts
         if: steps.check_alerts.outputs.alerts_fired == 'true'
         uses: actions/github-script@v7
@@ -267,7 +314,7 @@ jobs:
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `⚠️ QuantAgri Alert — ${{ steps.check_alerts.outputs.alert_count }} signal(s) fired`,
+              title: `⚠️ QuantAgri Alert — ${{ steps.check_alerts.outputs.alert_count }} threshold breach(es)`,
               body: `## QuantAgri Alert\n\n**Run:** ${{ github.run_number }}\n**Date:** ${new Date().toUTCString()}\n\n\`\`\`\n${lines.join('\n')}\n\`\`\`\n\n[View run →](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`,
               labels: ['quantagri-alert']
             });

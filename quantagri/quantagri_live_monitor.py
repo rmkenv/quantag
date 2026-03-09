@@ -22,6 +22,10 @@ Run modes:
     python quantagri_live_monitor.py --mode backfill --days 30
         → catch up on a gap (e.g. after Colab session expired)
 
+    python quantagri_live_monitor.py --mode test
+        → processes first active season only, 7-day window, dry run (no CSV write)
+        → use to verify Planetary Computer connection and config without side effects
+
 Schedule via cron (Linux/Mac) or Task Scheduler (Windows):
     # Daily at 06:00 UTC (after PC ingestion window closes)
     0 6 * * * cd /path/to/quantagri && python quantagri_live_monitor.py --mode daily
@@ -115,8 +119,6 @@ def setup_logging(output_dir: str) -> logging.Logger:
 
 # ---------------------------------------------------------------------------
 # STATE MANAGEMENT
-# Tracks the last scene date successfully ingested per region,
-# so each run only pulls genuinely new data.
 # ---------------------------------------------------------------------------
 
 def load_state(output_dir: str) -> dict:
@@ -154,7 +156,6 @@ def get_active_seasons(today: datetime) -> List[Tuple[GrowingSeason, str, str]]:
     year   = today.year
 
     for season in COMMODITY_SEASONS:
-        # Try current year and prior year as season start
         for start_year in [year, year - 1]:
             s_date, e_date = get_season_date_range(season, start_year)
             s_ts = pd.Timestamp(s_date)
@@ -162,14 +163,13 @@ def get_active_seasons(today: datetime) -> List[Tuple[GrowingSeason, str, str]]:
 
             if s_ts <= pd.Timestamp(today.date()) <= e_ts:
                 active.append((season, s_date, e_date))
-                break   # Don't double-add
+                break
 
     return active
 
 
 # ---------------------------------------------------------------------------
 # INCREMENTAL SCENE FETCH
-# Pulls only scenes newer than last_scene_date for a given region.
 # ---------------------------------------------------------------------------
 
 def fetch_incremental_scenes(
@@ -207,9 +207,6 @@ def fetch_incremental_scenes(
 
 # ---------------------------------------------------------------------------
 # SEASON-TO-DATE COMPOSITE
-# Fetches the full season window (not just incremental) and recomputes
-# composites. This is necessary because the 16-day composite window
-# may be incomplete on any given day.
 # ---------------------------------------------------------------------------
 
 def compute_season_to_date(
@@ -242,7 +239,6 @@ def compute_season_to_date(
 
 # ---------------------------------------------------------------------------
 # LIVE METRICS ROW
-# Computes all season-to-date metrics for one active region.
 # ---------------------------------------------------------------------------
 
 def compute_live_metrics(
@@ -271,21 +267,15 @@ def compute_live_metrics(
 
     df = spatial_mean(composites)
 
-    # Days into season
     days_in = (pd.Timestamp(today_str) - pd.Timestamp(s_date)).days
-    base['days_into_season'] = days_in
+    base['days_into_season']    = days_in
+    base['season_pct_elapsed']  = round(min(days_in / 180 * 100, 100), 1)
 
-    # Percent of season elapsed (approximate — use 180 days as typical season)
-    # For accurate pct, you'd use the actual season end date
-    base['season_pct_elapsed'] = round(min(days_in / 180 * 100, 100), 1)
-
-    # Core metrics
     peak_ndvi_d = compute_peak_ndvi(df)
     peak_lswi_d = compute_peak_lswi(df)
     vel_d       = compute_velocity_stats(df)
     tercile_d   = compute_tercile_means(df)
 
-    # Most recent composite values (last row of time series)
     latest = df.dropna(subset=['NDVI']).tail(1)
     if not latest.empty:
         base['current_ndvi']          = round(float(latest['NDVI'].iloc[0]), 4)
@@ -296,7 +286,6 @@ def compute_live_metrics(
         base['current_ndvi'] = base['current_lswi'] = base['current_ndvi_velocity'] = None
         base['latest_composite_date'] = None
 
-    # Yield surprise (if enough calibration data)
     surp_d = {}
     if peak_ndvi_d.get('peak_ndvi') and len(historical_ndvi) >= 3:
         surp_d = compute_yield_surprise(
@@ -312,7 +301,6 @@ def compute_live_metrics(
             'calibration_r2': None, 'calibration_n': len(historical_ndvi)
         }
 
-    # Number of composites available so far this season
     base['n_composites_to_date'] = composites.time.size
 
     return {**base, **peak_ndvi_d, **peak_lswi_d, **vel_d, **tercile_d, **surp_d}
@@ -323,10 +311,6 @@ def compute_live_metrics(
 # ---------------------------------------------------------------------------
 
 def check_alerts(row: dict) -> List[str]:
-    """
-    Returns list of alert strings if any threshold is breached.
-    Empty list = no alerts.
-    """
     alerts = []
 
     surp = row.get('yield_surprise')
@@ -368,10 +352,10 @@ LIVE_COLUMNS = [
 
 
 def append_live_row(row: dict, output_dir: str) -> None:
-    path        = os.path.join(output_dir, LIVE_RESULTS_CSV)
+    path         = os.path.join(output_dir, LIVE_RESULTS_CSV)
     write_header = not os.path.exists(path)
-    extra_cols  = sorted(set(row.keys()) - set(LIVE_COLUMNS))
-    fieldnames  = LIVE_COLUMNS + extra_cols
+    extra_cols   = sorted(set(row.keys()) - set(LIVE_COLUMNS))
+    fieldnames   = LIVE_COLUMNS + extra_cols
 
     with open(path, 'a', newline='') as f:
         w = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
@@ -383,7 +367,7 @@ def append_live_row(row: dict, output_dir: str) -> None:
 def append_alert_rows(alerts: List[str], row: dict, output_dir: str) -> None:
     if not alerts:
         return
-    path        = os.path.join(output_dir, ALERTS_CSV)
+    path         = os.path.join(output_dir, ALERTS_CSV)
     write_header = not os.path.exists(path)
 
     with open(path, 'a', newline='') as f:
@@ -395,18 +379,18 @@ def append_alert_rows(alerts: List[str], row: dict, output_dir: str) -> None:
             w.writeheader()
         for alert in alerts:
             w.writerow({
-                'timestamp':              row['run_timestamp'],
-                'alert':                  alert,
-                'commodity':              row['commodity'],
-                'region_id':              row['region_id'],
-                'as_of_date':             row['as_of_date'],
-                'yield_surprise':         row.get('yield_surprise'),
-                'current_ndvi_velocity':  row.get('current_ndvi_velocity'),
+                'timestamp':             row['run_timestamp'],
+                'alert':                 alert,
+                'commodity':             row['commodity'],
+                'region_id':             row['region_id'],
+                'as_of_date':            row['as_of_date'],
+                'yield_surprise':        row.get('yield_surprise'),
+                'current_ndvi_velocity': row.get('current_ndvi_velocity'),
             })
 
 
 # ---------------------------------------------------------------------------
-# YIELD DATA LOADER (reused from batch runner)
+# YIELD DATA LOADER
 # ---------------------------------------------------------------------------
 
 def load_official_yields(csv_path: str) -> Dict:
@@ -424,9 +408,9 @@ def load_official_yields(csv_path: str) -> Dict:
 
 
 def get_historical_ndvi(
-    live_csv:   str,
-    commodity:  str,
-    region_id:  str
+    live_csv:  str,
+    commodity: str,
+    region_id: str
 ) -> Dict[int, float]:
     """
     Build historical peak NDVI lookup from past live_results rows.
@@ -436,12 +420,11 @@ def get_historical_ndvi(
         return {}
     df = pd.read_csv(live_csv)
     df = df[
-        (df['commodity']  == commodity) &
-        (df['region_id']  == region_id) &
+        (df['commodity']          == commodity) &
+        (df['region_id']          == region_id) &
         (df['season_pct_elapsed'] >= 95) &
         (df['peak_ndvi'].notna())
     ]
-    # One peak NDVI per season_year — take the latest run for that year
     df = df.sort_values('run_timestamp').groupby('season_year').last().reset_index()
     return dict(zip(df['season_year'].astype(int), df['peak_ndvi'].astype(float)))
 
@@ -451,17 +434,20 @@ def get_historical_ndvi(
 # ---------------------------------------------------------------------------
 
 def run_monitor(
-    mode:          str,          # 'daily', 'weekly', 'backfill'
+    mode:          str,
     output_dir:    str,
     yield_csv:     str,
-    backfill_days: int  = 8,
+    backfill_days: int       = 8,
     commodities:   List[str] = None,
-    resolution:    int  = LIVE_RESOLUTION_M
+    resolution:    int       = LIVE_RESOLUTION_M,
+    dry_run:       bool      = False,
 ) -> None:
 
     logger = setup_logging(output_dir)
     logger.info(f"{'='*60}")
     logger.info(f"QuantAgri Live Monitor — mode={mode}")
+    if dry_run:
+        logger.info("DRY RUN — no CSV writes, no state updates")
     logger.info(f"Output dir: {output_dir}")
 
     today     = datetime.now(timezone.utc)
@@ -474,19 +460,26 @@ def run_monitor(
         lookback_days = 8
     elif mode == 'backfill':
         lookback_days = backfill_days
+    elif mode == 'test':
+        lookback_days = 7
+        dry_run       = True   # test always implies dry run
+        logger.info("TEST MODE — processing first active season only, 7-day window")
     else:
-        raise ValueError(f"Unknown mode: {mode}. Use daily, weekly, or backfill.")
+        raise ValueError(f"Unknown mode: {mode}. Use daily, weekly, backfill, or test.")
 
-    # Load state and yield data
-    state        = load_state(output_dir)
-    yield_data   = load_official_yields(yield_csv)
-    live_csv     = os.path.join(output_dir, LIVE_RESULTS_CSV)
+    state      = load_state(output_dir)
+    yield_data = load_official_yields(yield_csv)
+    live_csv   = os.path.join(output_dir, LIVE_RESULTS_CSV)
 
-    # Find all currently-active seasons
     active = get_active_seasons(today)
 
     if commodities:
         active = [(s, sd, ed) for s, sd, ed in active if s.commodity in commodities]
+
+    # TEST MODE — limit to first active season only
+    if mode == 'test' and active:
+        active = active[:1]
+        logger.info(f"TEST MODE — limiting to: {active[0][0].commodity}/{active[0][0].region_id}")
 
     logger.info(f"Active seasons today ({today_str}): {len(active)}")
     for s, sd, ed in active:
@@ -502,11 +495,9 @@ def run_monitor(
         sk = state_key(season)
         logger.info(f"\n--- {season.commodity.upper()} / {season.region_id} ---")
 
-        # Check if new data is available since last run
-        last_run = state.get(sk, {}).get('last_scene_date', None)
-        since    = (today - timedelta(days=lookback_days)).strftime('%Y-%m-%d')
-
-        bbox  = bbox_from_geometry(season.geometry)
+        last_run   = state.get(sk, {}).get('last_scene_date', None)
+        since      = (today - timedelta(days=lookback_days)).strftime('%Y-%m-%d')
+        bbox       = bbox_from_geometry(season.geometry)
         new_scenes = fetch_incremental_scenes(bbox, since, today_str)
 
         if not new_scenes and last_run:
@@ -514,9 +505,8 @@ def run_monitor(
             continue
 
         logger.info(f"  {len(new_scenes)} new scenes since {since}")
-
-        # Recompute season-to-date composites
         logger.info(f"  Building season-to-date composites ({s_date} → {today_str})...")
+
         composites = compute_season_to_date(season, s_date, today_str,
                                             resolution, logger)
 
@@ -526,11 +516,9 @@ def run_monitor(
 
         logger.info(f"  {composites.time.size} composites available")
 
-        # Load historical data for yield surprise calibration
         official_yields = yield_data.get(season.commodity, {}).get(season.region_id, {})
         historical_ndvi = get_historical_ndvi(live_csv, season.commodity, season.region_id)
 
-        # Compute all live metrics
         row = compute_live_metrics(
             season          = season,
             s_date          = s_date,
@@ -541,7 +529,6 @@ def run_monitor(
             logger          = logger
         )
 
-        # Log key numbers
         logger.info(
             f"  current_ndvi={row.get('current_ndvi')}  "
             f"velocity={row.get('current_ndvi_velocity')}  "
@@ -550,43 +537,47 @@ def run_monitor(
             f"{row.get('season_pct_elapsed')}% elapsed)"
         )
 
-        # Save result row
-        append_live_row(row, output_dir)
+        # Skip CSV writes and state updates in dry run / test mode
+        if not dry_run:
+            append_live_row(row, output_dir)
 
-        # Check alerts
-        alerts = check_alerts(row)
-        if alerts:
-            for a in alerts:
-                logger.warning(f"  ⚠️  ALERT: {a}")
-            append_alert_rows(alerts, row, output_dir)
-            total_alerts.extend(alerts)
+            alerts = check_alerts(row)
+            if alerts:
+                for a in alerts:
+                    logger.warning(f"  ⚠️  ALERT: {a}")
+                append_alert_rows(alerts, row, output_dir)
+                total_alerts.extend(alerts)
 
-        # Update state
-        state.setdefault(sk, {})
-        state[sk]['last_run']        = today_str
-        state[sk]['last_scene_date'] = today_str
-        state[sk]['last_ndvi']       = row.get('current_ndvi')
-        state[sk]['last_surprise']   = row.get('yield_surprise')
-        save_state(state, output_dir)
+            state.setdefault(sk, {})
+            state[sk]['last_run']        = today_str
+            state[sk]['last_scene_date'] = today_str
+            state[sk]['last_ndvi']       = row.get('current_ndvi')
+            state[sk]['last_surprise']   = row.get('yield_surprise')
+            save_state(state, output_dir)
+        else:
+            logger.info("  DRY RUN — skipping CSV write and state update")
+            alerts = check_alerts(row)
+            if alerts:
+                for a in alerts:
+                    logger.info(f"  DRY RUN — would have fired alert: {a}")
 
-        time.sleep(1.0)   # polite pause between regions
+        time.sleep(1.0)
 
     logger.info(f"\n{'='*60}")
-    logger.info(f"Run complete. {len(total_alerts)} alerts fired.")
-    logger.info(f"Results → {os.path.join(output_dir, LIVE_RESULTS_CSV)}")
-    if total_alerts:
-        logger.info(f"Alerts  → {os.path.join(output_dir, ALERTS_CSV)}")
+    if dry_run:
+        logger.info("TEST/DRY RUN complete — no files written.")
+    else:
+        logger.info(f"Run complete. {len(total_alerts)} alerts fired.")
+        logger.info(f"Results → {os.path.join(output_dir, LIVE_RESULTS_CSV)}")
+        if total_alerts:
+            logger.info(f"Alerts  → {os.path.join(output_dir, ALERTS_CSV)}")
 
 
 # ---------------------------------------------------------------------------
-# DASHBOARD SUMMARY (print to console or use in Colab)
+# DASHBOARD SUMMARY
 # ---------------------------------------------------------------------------
 
 def print_live_dashboard(output_dir: str) -> None:
-    """
-    Print a compact live dashboard from the most recent row per region.
-    Run this after run_monitor() to see the current state at a glance.
-    """
     live_csv = os.path.join(output_dir, LIVE_RESULTS_CSV)
     if not os.path.exists(live_csv):
         print("No live results yet — run monitor first.")
@@ -605,12 +596,12 @@ def print_live_dashboard(output_dir: str) -> None:
     print('-'*100)
 
     for _, row in df.sort_values(['commodity', 'region_id']).iterrows():
-        surp  = row.get('yield_surprise')
+        surp     = row.get('yield_surprise')
         surp_str = f"{surp:+.2f} bpa" if pd.notna(surp) else "  n/a"
-        vel   = row.get('current_ndvi_velocity')
-        vel_str  = f"{vel:+.4f}/d"  if pd.notna(vel) else "     n/a"
-        ndvi  = row.get('current_ndvi')
-        ndvi_str = f"{ndvi:.3f}"    if pd.notna(ndvi) else "  n/a"
+        vel      = row.get('current_ndvi_velocity')
+        vel_str  = f"{vel:+.4f}/d"    if pd.notna(vel)  else "     n/a"
+        ndvi     = row.get('current_ndvi')
+        ndvi_str = f"{ndvi:.3f}"      if pd.notna(ndvi) else "  n/a"
 
         print(
             f"{row['commodity']:<10} {row['region_id']:<28} "
@@ -630,9 +621,9 @@ def print_live_dashboard(output_dir: str) -> None:
 def parse_args():
     p = argparse.ArgumentParser(description='QuantAgri Live Monitor')
     p.add_argument('--mode',
-                   choices=['daily', 'weekly', 'backfill'],
+                   choices=['daily', 'weekly', 'backfill', 'test'],
                    default='daily',
-                   help='Run mode (default: daily)')
+                   help='Run mode: daily, weekly, backfill, or test (default: daily)')
     p.add_argument('--output_dir',
                    default=DEFAULT_OUTPUT_DIR,
                    help='Output directory for live results')
@@ -654,6 +645,9 @@ def parse_args():
     p.add_argument('--dashboard',
                    action='store_true',
                    help='Print live dashboard after run')
+    p.add_argument('--dry_run',
+                   action='store_true',
+                   help='Skip CSV writes and state updates (implied by --mode test)')
     return p.parse_args()
 
 
@@ -666,7 +660,8 @@ if __name__ == '__main__':
         yield_csv     = args.yield_csv,
         backfill_days = args.backfill_days,
         commodities   = args.commodities,
-        resolution    = args.resolution
+        resolution    = args.resolution,
+        dry_run       = args.dry_run,
     )
 
     if args.dashboard:

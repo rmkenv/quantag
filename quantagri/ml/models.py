@@ -1,143 +1,137 @@
 """
-Yield prediction models.
-Ensemble of LightGBM + Ridge with time-series cross-validation.
+quantagri/ml/models.py
+LightGBM + Ridge ensemble yield model.
 """
-import numpy as np
-import pandas as pd
 import pickle
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 from sklearn.linear_model import Ridge
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import r2_score, mean_absolute_error
 from sklearn.model_selection import TimeSeriesSplit
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import r2_score
 
 try:
-    from lightgbm import LGBMRegressor
+    import lightgbm as lgb
     HAS_LGBM = True
 except ImportError:
     HAS_LGBM = False
 
-from .features import FEAT_COLS
+from features import FEAT_COLS
 
 
 class YieldModel:
     """
-    Ensemble yield regressor.
-    Uses LightGBM if available, falls back to Ridge.
-    Trained per commodity+region.
+    Ensemble of Ridge (40%) + LightGBM (60%) for yield prediction.
+    Falls back to Ridge-only if LightGBM not available.
     """
 
+    RIDGE_WEIGHT = 0.4
+    LGBM_WEIGHT  = 0.6
+
     def __init__(self, commodity: str, region_id: str, model_dir: str = "ml_models"):
-        self.commodity = commodity
-        self.region_id = region_id
-        self.model_dir = Path(model_dir)
-        self.model_dir.mkdir(exist_ok=True)
-        self.scaler = StandardScaler()
-        self.ridge = Ridge(alpha=1.0)
-        self.lgbm = LGBMRegressor(
-            n_estimators=100, learning_rate=0.05,
-            max_depth=3, min_child_samples=2,
-            verbose=-1,
-        ) if HAS_LGBM else None
-        self.fitted = False
-        self.feature_cols = None
-        self.cv_scores = {}
+        self.commodity  = commodity
+        self.region_id  = region_id
+        self.model_dir  = Path(model_dir)
+        self.scaler     = StandardScaler()
+        self.ridge      = Ridge(alpha=1.0)
+        self.lgbm       = None
+        self.feat_cols_ = []
+        self.fitted_    = False
 
-    # ── Training ──────────────────────────────────────────────────────────────
+    def _get_feat_cols(self, feats: pd.DataFrame) -> list:
+        available = [c for c in FEAT_COLS if c in feats.columns]
+        lag_cols  = [c for c in feats.columns if "_lag" in c]
+        return available + lag_cols
 
-    def fit(self, feat_df: pd.DataFrame, yield_df: pd.DataFrame) -> dict:
+    def fit(self, feats: pd.DataFrame, yield_df: pd.DataFrame) -> dict:
         """
-        feat_df: output of build_season_features()
-        yield_df: columns [year, official_yield]
-        Returns dict of CV metrics.
+        Fit the ensemble. Returns cross-validation metrics.
+        feats:     season_year + feature columns
+        yield_df:  year + official_yield columns
         """
-        merged = feat_df.merge(
-            yield_df[["year", "official_yield"]],
-            left_on="season_year", right_on="year", how="inner"
-        )
-        available_cols = [c for c in FEAT_COLS if c in merged.columns]
-        merged = merged.dropna(subset=available_cols)
+        merged = feats.merge(
+            yield_df[["year", "official_yield"]].rename(columns={"year": "season_year"}),
+            on="season_year", how="inner"
+        ).dropna()
 
         if len(merged) < 3:
-            raise ValueError(f"Insufficient data: {len(merged)} rows after merge/dropna")
+            raise ValueError(f"Need at least 3 matched seasons, got {len(merged)}")
 
-        self.feature_cols = available_cols
-        X = merged[available_cols].values
+        self.feat_cols_ = self._get_feat_cols(merged)
+        X = merged[self.feat_cols_].values
         y = merged["official_yield"].values
 
-        X_s = self.scaler.fit_transform(X)
-        self.ridge.fit(X_s, y)
+        X_scaled = self.scaler.fit_transform(X)
 
-        if self.lgbm and len(merged) >= 5:
-            self.lgbm.fit(X, y)
+        # Cross-validation
+        tscv = TimeSeriesSplit(n_splits=min(3, len(merged) - 1))
+        ridge_preds, lgbm_preds, actuals = [], [], []
 
-        # Time-series CV
-        self.cv_scores = self._time_series_cv(X, X_s, y)
-        self.fitted = True
-        return self.cv_scores
+        for train_idx, val_idx in tscv.split(X_scaled):
+            X_tr, X_val = X_scaled[train_idx], X_scaled[val_idx]
+            y_tr, y_val = y[train_idx], y[val_idx]
 
-    def _time_series_cv(self, X_raw, X_scaled, y) -> dict:
-        n_splits = min(3, len(y) - 2)
-        if n_splits < 2:
-            return {}
-        tscv = TimeSeriesSplit(n_splits=n_splits)
-        ridge_r2, lgbm_r2 = [], []
+            r = Ridge(alpha=1.0).fit(X_tr, y_tr)
+            ridge_preds.extend(r.predict(X_val))
+            actuals.extend(y_val)
 
-        for train_idx, test_idx in tscv.split(X_scaled):
-            # Ridge
-            s = StandardScaler().fit(X_scaled[train_idx])
-            r = Ridge(alpha=1.0).fit(s.transform(X_scaled[train_idx]), y[train_idx])
-            ridge_r2.append(r2_score(y[test_idx], r.predict(s.transform(X_scaled[test_idx]))))
+            if HAS_LGBM and len(X_tr) >= 3:
+                lg = lgb.LGBMRegressor(
+                    n_estimators=100, learning_rate=0.05,
+                    num_leaves=15, min_child_samples=2, verbose=-1
+                ).fit(X_tr, y_tr)
+                lgbm_preds.extend(lg.predict(X_val))
 
-            # LightGBM
-            if self.lgbm and len(train_idx) >= 3:
-                lg = LGBMRegressor(n_estimators=100, learning_rate=0.05,
-                                   max_depth=3, min_child_samples=2, verbose=-1)
-                lg.fit(X_raw[train_idx], y[train_idx])
-                lgbm_r2.append(r2_score(y[test_idx], lg.predict(X_raw[test_idx])))
+        cv = {}
+        if actuals:
+            cv["ridge_cv_r2"] = float(r2_score(actuals, ridge_preds))
+            if lgbm_preds:
+                cv["lgbm_cv_r2"] = float(r2_score(actuals, lgbm_preds))
 
-        scores = {"ridge_cv_r2": float(np.mean(ridge_r2))}
-        if lgbm_r2:
-            scores["lgbm_cv_r2"] = float(np.mean(lgbm_r2))
-        return scores
+        # Final fit on all data
+        self.ridge.fit(X_scaled, y)
 
-    # ── Prediction ────────────────────────────────────────────────────────────
+        if HAS_LGBM and len(X_scaled) >= 3:
+            self.lgbm = lgb.LGBMRegressor(
+                n_estimators=100, learning_rate=0.05,
+                num_leaves=15, min_child_samples=2, verbose=-1
+            ).fit(X_scaled, y)
 
-    def predict(self, feat_row: pd.Series) -> dict:
-        """
-        Predict yield for a single season feature row.
-        Returns dict with ridge_pred, lgbm_pred, ensemble_pred.
-        """
-        if not self.fitted:
-            raise RuntimeError("Model not fitted — call fit() first")
+        self.fitted_ = True
+        return cv
 
-        x = feat_row[self.feature_cols].values.reshape(1, -1)
-        x_s = self.scaler.transform(x)
+    def predict(self, feat_row: pd.DataFrame) -> dict:
+        if not self.fitted_:
+            raise RuntimeError("Model not fitted")
 
-        ridge_pred = float(self.ridge.predict(x_s)[0])
-        result = {"ridge_pred": ridge_pred}
+        X = feat_row[self.feat_cols_].values.reshape(1, -1)
+        X_scaled = self.scaler.transform(X)
 
-        if self.lgbm and self.lgbm.n_estimators_:
-            lgbm_pred = float(self.lgbm.predict(x)[0])
-            result["lgbm_pred"] = lgbm_pred
-            result["ensemble_pred"] = 0.4 * ridge_pred + 0.6 * lgbm_pred
+        ridge_pred = float(self.ridge.predict(X_scaled)[0])
+
+        if self.lgbm is not None:
+            lgbm_pred    = float(self.lgbm.predict(X_scaled)[0])
+            ensemble_pred = self.RIDGE_WEIGHT * ridge_pred + self.LGBM_WEIGHT * lgbm_pred
         else:
-            result["ensemble_pred"] = ridge_pred
+            lgbm_pred     = None
+            ensemble_pred = ridge_pred
 
-        return result
-
-    # ── Persistence ───────────────────────────────────────────────────────────
+        return {
+            "ridge_pred":    ridge_pred,
+            "lgbm_pred":     lgbm_pred,
+            "ensemble_pred": ensemble_pred,
+        }
 
     def save(self):
-        path = self.model_dir / f"{self.commodity}_{self.region_id}.pkl"
+        self.model_dir.mkdir(exist_ok=True)
+        path = self.model_dir / f"{self.commodity}_{self.region_id}_yield.pkl"
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
     @classmethod
     def load(cls, commodity: str, region_id: str, model_dir: str = "ml_models"):
-        path = Path(model_dir) / f"{commodity}_{region_id}.pkl"
-        if not path.exists():
-            raise FileNotFoundError(f"No saved model at {path}")
+        path = Path(model_dir) / f"{commodity}_{region_id}_yield.pkl"
         with open(path, "rb") as f:
             return pickle.load(f)

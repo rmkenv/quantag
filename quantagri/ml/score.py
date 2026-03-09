@@ -21,23 +21,33 @@ def compute_signal_score(
 ) -> pd.DataFrame:
 
     live = pd.read_csv(live_csv)
-    
+
     # Load z-scores if available
     zscore_available = Path(analysis_csv).exists()
     if zscore_available:
         analysis = pd.read_csv(analysis_csv)
-    
+
     rows = []
-    
+
     for (commodity, region), grp in live.groupby(["commodity", "region_id"]):
-        latest = grp.sort_values("as_of_date").iloc[-1]
+        # Find date column in live CSV
+        live_date_col = next(
+            (c for c in ["as_of_date", "date", "year_month", "run_date"]
+             if c in grp.columns),
+            None
+        )
+        if live_date_col:
+            latest = grp.sort_values(live_date_col).iloc[-1]
+        else:
+            latest = grp.iloc[-1]
+
         score = 0
         components = {}
 
         # ── Component 1: ML signal direction (+/-2) ──────────────────────────
         signal = latest.get("ml_signal", "NEUTRAL")
         prob   = latest.get("ml_beat_probability", 0.5)
-        
+
         if signal == "LONG":
             score += 2
             components["ml_signal"] = "+2 (LONG)"
@@ -68,14 +78,23 @@ def compute_signal_score(
 
         # ── Component 4: Z-score alignment (+/-1) ────────────────────────────
         if zscore_available:
+            # Auto-detect date column in analysis CSV
+            date_col = next(
+                (c for c in ["as_of_date", "year_month", "month_label", "year", "date"]
+                 if c in analysis.columns),
+                None
+            )
             z_sub = analysis[
                 (analysis.commodity == commodity) &
                 (analysis.region_id == region)
-            ].sort_values("as_of_date").tail(1)
+            ]
+            if date_col:
+                z_sub = z_sub.sort_values(date_col).tail(1)
+            else:
+                z_sub = z_sub.tail(1)
 
             if not z_sub.empty and "ndvi_zscore" in z_sub.columns:
                 z = float(z_sub["ndvi_zscore"].iloc[0])
-                # Z-score confirms signal direction
                 if signal == "LONG" and z > 1.0:
                     score += 1
                     components["zscore"] = f"+1 (z={z:.2f}, confirms LONG)"
@@ -112,16 +131,16 @@ def compute_signal_score(
             conviction = "STRONG SHORT 🔴"
 
         rows.append({
-            "commodity": commodity,
-            "region_id": region,
-            "as_of_date": latest.get("as_of_date"),
+            "commodity":       commodity,
+            "region_id":       region,
+            "as_of_date":      latest.get(live_date_col) if live_date_col else None,
             "conviction_score": score,
-            "conviction": conviction,
-            "ml_signal": signal,
-            "ml_beat_prob": round(float(prob), 3),
-            "ml_confidence": confidence,
-            "anomaly_score": round(float(anomaly_score), 3) if pd.notna(anomaly_score) else None,
-            "yield_surprise": latest.get("yield_surprise"),
+            "conviction":      conviction,
+            "ml_signal":       signal,
+            "ml_beat_prob":    round(float(prob), 3),
+            "ml_confidence":   confidence,
+            "anomaly_score":   round(float(anomaly_score), 3) if pd.notna(anomaly_score) else None,
+            "yield_surprise":  latest.get("yield_surprise"),
             **{f"component_{k}": v for k, v in components.items()},
         })
 

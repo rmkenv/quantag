@@ -1,4 +1,4 @@
 commodity,region_id,as_of_date,conviction_score,conviction,ml_signal,ml_beat_prob,ml_confidence,anomaly_score,yield_surprise,component_ml_signal,component_ml_confidence,component_anomaly,component_zscore
-soy,mato_grosso_br,2026-03-09,0,NEUTRAL ⚪,NEUTRAL,0.5,low,0.0,,0 (NEUTRAL),0 (low),0 (normal),"0 (z=nan, inconclusive)"
-wheat,kansas_us,2026-03-09,0,NEUTRAL ⚪,NEUTRAL,0.5,low,0.0,,0 (NEUTRAL),0 (low),0 (normal),"0 (z=nan, inconclusive)"
-wheat,rostov_ru,2026-03-09,0,NEUTRAL ⚪,NEUTRAL,0.5,low,0.0,,0 (NEUTRAL),0 (low),0 (normal),"0 (z=nan, inconclusive)"
+soy,mato_grosso_br,2026-03-10,0,NEUTRAL ⚪,NEUTRAL,0.5,low,0.0,,0 (NEUTRAL),0 (low),0 (normal),"0 (z=nan, inconclusive)"
+wheat,kansas_us,2026-03-10,0,NEUTRAL ⚪,NEUTRAL,0.5,low,0.0,,0 (NEUTRAL),0 (low),0 (normal),"0 (z=nan, inconclusive)"
+wheat,rostov_ru,2026-03-10,0,NEUTRAL ⚪,NEUTRAL,0.5,low,0.0,,0 (NEUTRAL),0 (low),0 (normal),"0 (z=nan, inconclusive)"

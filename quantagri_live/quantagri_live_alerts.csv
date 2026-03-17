@@ -14,3 +14,4 @@ timestamp,alert,commodity,region_id,as_of_date,yield_surprise,current_ndvi_veloc
 2026-03-11 07:01 UTC,VELOCITY_GREENUP: wheat/rostov_ru dNDVI/dt = +0.0729/day as of 2026-03-04,wheat,rostov_ru,2026-03-11,,0.07292
 2026-03-15 07:02 UTC,VELOCITY_GREENUP: wheat/kansas_us dNDVI/dt = +0.0163/day as of 2026-03-01,wheat,kansas_us,2026-03-15,,0.01632
 2026-03-16 07:24 UTC,VELOCITY_GREENUP: wheat/kansas_us dNDVI/dt = +0.0255/day as of 2026-03-01,wheat,kansas_us,2026-03-16,,0.02549
+2026-03-17 07:10 UTC,VELOCITY_GREENUP: wheat/kansas_us dNDVI/dt = +0.0249/day as of 2026-03-01,wheat,kansas_us,2026-03-17,,0.02489

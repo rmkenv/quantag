@@ -1,17 +1,17 @@
 =================================================================
   QUANTAGRI MONTHLY STATISTICAL REPORT
-  Generated: 2026-03-07 20:58 UTC
+  Generated: 2026-04-01 08:59 UTC
 =================================================================
 
 [1] MONTHLY NDVI SUMMARY (latest month per region)
 
-  soy      mato_grosso_br         Mar 2026    NDVI=0.4081  z=n/a  
-  wheat    kansas_us              Mar 2026    NDVI=0.1649  z=n/a  
-  wheat    rostov_ru              Mar 2026    NDVI=0.1647  z=n/a  
+  soy      mato_grosso_br         Mar 2026    NDVI=0.4332  z=-1.04  pct=20th
+  wheat    kansas_us              Mar 2026    NDVI=0.2246  z=-0.29  pct=25th
+  wheat    rostov_ru              Mar 2026    NDVI=0.1661  z=-0.47  pct=33th
 
 [2] ANOMALIES (|z| >= 1.5σ)
 
-  No anomalies detected.
+  ⚠️  wheat/rostov_ru Apr 2026  z=-2.23  SIGNIFICANT BELOW NORMAL
 
 [3] NDVI → YIELD R² BY MONTH (which month predicts yield best)
 
@@ -20,5 +20,6 @@
 
 [4] NDVI VELOCITY TREND (season direction)
 
+  wheat    rostov_ru               velocity=0.01985 ↑  trend=insufficient data  τ=nan
 
 =================================================================

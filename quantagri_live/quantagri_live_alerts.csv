@@ -35,3 +35,5 @@ timestamp,alert,commodity,region_id,as_of_date,yield_surprise,current_ndvi_veloc
 2026-04-10 07:47 UTC,VELOCITY_GREENUP: wheat/kansas_us dNDVI/dt = +0.0202/day as of 2026-04-02,wheat,kansas_us,2026-04-10,,0.02021
 2026-04-10 07:55 UTC,VELOCITY_GREENUP: wheat/rostov_ru dNDVI/dt = +0.0511/day as of 2026-04-05,wheat,rostov_ru,2026-04-10,,0.0511
 2026-04-10 07:47 UTC,VELOCITY_STRESS: cotton/south_texas_us dNDVI/dt = -0.0167/day as of 2026-04-01,cotton,south_texas_us,2026-04-10,,-0.01667
+2026-04-12 07:19 UTC,VELOCITY_GREENUP: wheat/rostov_ru dNDVI/dt = +0.0508/day as of 2026-04-05,wheat,rostov_ru,2026-04-12,,0.05082
+2026-04-12 07:20 UTC,VELOCITY_STRESS: cotton/south_texas_us dNDVI/dt = -0.0169/day as of 2026-04-01,cotton,south_texas_us,2026-04-12,,-0.01695

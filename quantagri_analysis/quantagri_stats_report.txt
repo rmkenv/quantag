@@ -1,17 +1,20 @@
 =================================================================
   QUANTAGRI MONTHLY STATISTICAL REPORT
-  Generated: 2026-04-01 08:59 UTC
+  Generated: 2026-05-01 09:42 UTC
 =================================================================
 
 [1] MONTHLY NDVI SUMMARY (latest month per region)
 
+  cotton   south_texas_us         May 2026    NDVI=0.1040  z=n/a  
+  cotton   xinjiang_tarim_cn      Apr 2026    NDVI=0.0423  z=n/a  
   soy      mato_grosso_br         Mar 2026    NDVI=0.4332  z=-1.04  pct=20th
-  wheat    kansas_us              Mar 2026    NDVI=0.2246  z=-0.29  pct=25th
-  wheat    rostov_ru              Mar 2026    NDVI=0.1661  z=-0.47  pct=33th
+  wheat    kansas_us              May 2026    NDVI=0.2570  z=-1.58  pct=0th
+  wheat    rostov_ru              May 2026    NDVI=0.2686  z=-1.85  pct=0th
 
 [2] ANOMALIES (|z| >= 1.5σ)
 
-  ⚠️  wheat/rostov_ru Apr 2026  z=-2.23  SIGNIFICANT BELOW NORMAL
+  ⚠️  wheat/rostov_ru May 2026  z=-1.85  MODERATE BELOW NORMAL
+  ⚠️  wheat/kansas_us May 2026  z=-1.58  MODERATE BELOW NORMAL
 
 [3] NDVI → YIELD R² BY MONTH (which month predicts yield best)
 
@@ -20,6 +23,8 @@
 
 [4] NDVI VELOCITY TREND (season direction)
 
-  wheat    rostov_ru               velocity=0.01985 ↑  trend=insufficient data  τ=nan
+  cotton   south_texas_us          velocity=-0.01677 ↓  trend=insufficient data  τ=nan
+  wheat    kansas_us               velocity=0.08201 ↑  trend=insufficient data  τ=nan
+  wheat    rostov_ru               velocity=0.03964 ↑  trend=insufficient data  τ=nan
 
 =================================================================

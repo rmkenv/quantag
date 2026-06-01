@@ -1,20 +1,27 @@
 =================================================================
   QUANTAGRI MONTHLY STATISTICAL REPORT
-  Generated: 2026-05-01 09:42 UTC
+  Generated: 2026-06-01 13:31 UTC
 =================================================================
 
 [1] MONTHLY NDVI SUMMARY (latest month per region)
 
-  cotton   south_texas_us         May 2026    NDVI=0.1040  z=n/a  
-  cotton   xinjiang_tarim_cn      Apr 2026    NDVI=0.0423  z=n/a  
+  corn     illinois_us            May 2026    NDVI=0.2841  z=-1.60  pct=0th
+  corn     iowa_us                May 2026    NDVI=0.3260  z=-0.21  pct=38th
+  cotton   north_texas_us         May 2026    NDVI=0.1870  z=n/a  
+  cotton   south_texas_us         May 2026    NDVI=0.1168  z=n/a  
+  cotton   xinjiang_north_cn      May 2026    NDVI=0.1659  z=n/a  
+  cotton   xinjiang_tarim_cn      May 2026    NDVI=0.0352  z=n/a  
+  soy      illinois_us            May 2026    NDVI=0.2844  z=-1.26  pct=0th
   soy      mato_grosso_br         Mar 2026    NDVI=0.4332  z=-1.04  pct=20th
-  wheat    kansas_us              May 2026    NDVI=0.2570  z=-1.58  pct=0th
-  wheat    rostov_ru              May 2026    NDVI=0.2686  z=-1.85  pct=0th
+  wheat    kansas_us              May 2026    NDVI=0.2500  z=-1.66  pct=0th
+  wheat    rostov_ru              May 2026    NDVI=0.3468  z=-1.08  pct=33th
 
 [2] ANOMALIES (|z| >= 1.5σ)
 
-  ⚠️  wheat/rostov_ru May 2026  z=-1.85  MODERATE BELOW NORMAL
-  ⚠️  wheat/kansas_us May 2026  z=-1.58  MODERATE BELOW NORMAL
+  ⚠️  wheat/kansas_us Jun 2026  z=-2.29  SIGNIFICANT BELOW NORMAL
+  ⚠️  corn/iowa_us Jun 2026  z=-1.74  MODERATE BELOW NORMAL
+  ⚠️  wheat/kansas_us May 2026  z=-1.66  MODERATE BELOW NORMAL
+  ⚠️  corn/illinois_us May 2026  z=-1.60  MODERATE BELOW NORMAL
 
 [3] NDVI → YIELD R² BY MONTH (which month predicts yield best)
 
@@ -23,8 +30,10 @@
 
 [4] NDVI VELOCITY TREND (season direction)
 
-  cotton   south_texas_us          velocity=-0.01677 ↓  trend=insufficient data  τ=nan
-  wheat    kansas_us               velocity=0.08201 ↑  trend=insufficient data  τ=nan
-  wheat    rostov_ru               velocity=0.03964 ↑  trend=insufficient data  τ=nan
+  corn     iowa_us                 velocity=0.00531 ↑  trend=insufficient data  τ=nan
+  cotton   north_texas_us          velocity=0.00861 ↑  trend=insufficient data  τ=nan
+  cotton   south_texas_us          velocity=-0.00093 →  trend=insufficient data  τ=nan
+  wheat    kansas_us               velocity=0.01557 ↑  trend=no trend  τ=0.183
+  wheat    rostov_ru               velocity=0.01306 ↑  trend=no trend  τ=-0.667
 
 =================================================================

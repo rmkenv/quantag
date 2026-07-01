@@ -1,6 +1,6 @@
 =================================================================
   QUANTAGRI MONTHLY STATISTICAL REPORT
-  Generated: 2026-06-01 13:31 UTC
+  Generated: 2026-07-01 11:20 UTC
 =================================================================
 
 [1] MONTHLY NDVI SUMMARY (latest month per region)
@@ -18,8 +18,7 @@
 
 [2] ANOMALIES (|z| >= 1.5σ)
 
-  ⚠️  wheat/kansas_us Jun 2026  z=-2.29  SIGNIFICANT BELOW NORMAL
-  ⚠️  corn/iowa_us Jun 2026  z=-1.74  MODERATE BELOW NORMAL
+  ⚠️  wheat/kansas_us Jun 2026  z=-2.75  EXTREME BELOW NORMAL
   ⚠️  wheat/kansas_us May 2026  z=-1.66  MODERATE BELOW NORMAL
   ⚠️  corn/illinois_us May 2026  z=-1.60  MODERATE BELOW NORMAL
 
@@ -30,10 +29,13 @@
 
 [4] NDVI VELOCITY TREND (season direction)
 
-  corn     iowa_us                 velocity=0.00531 ↑  trend=insufficient data  τ=nan
-  cotton   north_texas_us          velocity=0.00861 ↑  trend=insufficient data  τ=nan
-  cotton   south_texas_us          velocity=-0.00093 →  trend=insufficient data  τ=nan
-  wheat    kansas_us               velocity=0.01557 ↑  trend=no trend  τ=0.183
-  wheat    rostov_ru               velocity=0.01306 ↑  trend=no trend  τ=-0.667
+  corn     illinois_us             velocity=0.03136 ↑  trend=insufficient data  τ=nan
+  corn     iowa_us                 velocity=0.01255 ↑  trend=insufficient data  τ=nan
+  cotton   north_texas_us          velocity=-0.02032 ↓  trend=insufficient data  τ=nan
+  cotton   south_texas_us          velocity=0.00415 →  trend=insufficient data  τ=nan
+  cotton   xinjiang_tarim_cn       velocity=-0.02140 ↓  trend=insufficient data  τ=nan
+  soy      illinois_us             velocity=0.03160 ↑  trend=insufficient data  τ=nan
+  wheat    kansas_us               velocity=0.00086 →  trend=no trend  τ=0.0
+  wheat    rostov_ru               velocity=-0.11866 ↓  trend=no trend  τ=-0.667
 
 =================================================================

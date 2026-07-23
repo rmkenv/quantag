@@ -220,3 +220,5 @@ timestamp,alert,commodity,region_id,as_of_date,yield_surprise,current_ndvi_veloc
 2026-07-21 08:33 UTC,VELOCITY_GREENUP: soy/illinois_us dNDVI/dt = +0.0273/day as of 2026-07-05,soy,illinois_us,2026-07-21,,0.02735
 2026-07-22 08:33 UTC,VELOCITY_STRESS: wheat/rostov_ru dNDVI/dt = -0.0284/day as of 2026-07-10,wheat,rostov_ru,2026-07-22,,-0.02845
 2026-07-22 08:33 UTC,VELOCITY_GREENUP: corn/iowa_us dNDVI/dt = +0.0248/day as of 2026-07-20,corn,iowa_us,2026-07-22,,0.0248
+2026-07-23 08:34 UTC,VELOCITY_STRESS: wheat/rostov_ru dNDVI/dt = -0.0289/day as of 2026-07-10,wheat,rostov_ru,2026-07-23,,-0.02891
+2026-07-23 08:34 UTC,VELOCITY_GREENUP: corn/iowa_us dNDVI/dt = +0.0246/day as of 2026-07-20,corn,iowa_us,2026-07-23,,0.02463

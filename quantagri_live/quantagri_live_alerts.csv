@@ -266,3 +266,4 @@ timestamp,alert,commodity,region_id,as_of_date,yield_surprise,current_ndvi_veloc
 2026-08-15 06:41 UTC,VELOCITY_STRESS: cotton/south_texas_us dNDVI/dt = -0.0176/day as of 2026-08-07,cotton,south_texas_us,2026-08-15,,-0.01765
 2026-08-16 06:42 UTC,VELOCITY_STRESS: corn/iowa_us dNDVI/dt = -0.0211/day as of 2026-08-05,corn,iowa_us,2026-08-16,,-0.02106
 2026-08-17 06:59 UTC,VELOCITY_STRESS: corn/iowa_us dNDVI/dt = -0.0190/day as of 2026-08-05,corn,iowa_us,2026-08-17,,-0.01904
+2026-08-18 06:47 UTC,VELOCITY_STRESS: corn/iowa_us dNDVI/dt = -0.0190/day as of 2026-08-05,corn,iowa_us,2026-08-18,,-0.01904

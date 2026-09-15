@@ -320,3 +320,6 @@ timestamp,alert,commodity,region_id,as_of_date,yield_surprise,current_ndvi_veloc
 2026-09-14 12:11 UTC,VELOCITY_STRESS: corn/iowa_us dNDVI/dt = -0.0903/day as of 2026-09-06,corn,iowa_us,2026-09-14,,-0.09035
 2026-09-14 12:27 UTC,VELOCITY_STRESS: corn/illinois_us dNDVI/dt = -0.0272/day as of 2026-09-07,corn,illinois_us,2026-09-14,,-0.02721
 2026-09-14 12:11 UTC,VELOCITY_STRESS: soy/illinois_us dNDVI/dt = -0.0271/day as of 2026-09-07,soy,illinois_us,2026-09-14,,-0.02706
+2026-09-15 11:21 UTC,VELOCITY_STRESS: corn/iowa_us dNDVI/dt = -0.0908/day as of 2026-09-06,corn,iowa_us,2026-09-15,,-0.09081
+2026-09-15 11:41 UTC,VELOCITY_STRESS: corn/illinois_us dNDVI/dt = -0.0283/day as of 2026-09-07,corn,illinois_us,2026-09-15,,-0.0283
+2026-09-15 11:21 UTC,VELOCITY_STRESS: soy/illinois_us dNDVI/dt = -0.0282/day as of 2026-09-07,soy,illinois_us,2026-09-15,,-0.02824

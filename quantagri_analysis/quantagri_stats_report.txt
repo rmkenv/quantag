@@ -1,17 +1,17 @@
 =================================================================
   QUANTAGRI MONTHLY STATISTICAL REPORT
-  Generated: 2026-09-01 13:00 UTC
+  Generated: 2026-10-01 15:02 UTC
 =================================================================
 
 [1] MONTHLY NDVI SUMMARY (latest month per region)
 
-  corn     illinois_us            Sep 2026    NDVI=0.5586  z=0.05  pct=38th
-  corn     iowa_us                Sep 2026    NDVI=0.5576  z=0.19  pct=44th
-  cotton   north_texas_us         May 2026    NDVI=0.1870  z=n/a  
+  corn     illinois_us            Sep 2026    NDVI=0.3229  z=-2.06  pct=0th
+  corn     iowa_us                Sep 2026    NDVI=0.4037  z=-0.90  pct=33th
+  cotton   north_texas_us         Oct 2026    NDVI=0.2465  z=n/a  
   cotton   south_texas_us         May 2026    NDVI=0.1168  z=n/a  
   cotton   xinjiang_north_cn      May 2026    NDVI=0.1659  z=n/a  
   cotton   xinjiang_tarim_cn      May 2026    NDVI=0.0352  z=n/a  
-  soy      illinois_us            Sep 2026    NDVI=0.5585  z=0.34  pct=43th
+  soy      illinois_us            Sep 2026    NDVI=0.3228  z=-1.42  pct=14th
   soy      mato_grosso_br         Mar 2026    NDVI=0.4332  z=-1.04  pct=20th
   wheat    kansas_us              May 2026    NDVI=0.2500  z=-1.66  pct=0th
   wheat    rostov_ru              May 2026    NDVI=0.3468  z=-1.08  pct=33th
@@ -20,6 +20,7 @@
 
   ⚠️  wheat/kansas_us Jun 2026  z=-2.75  EXTREME BELOW NORMAL
   ⚠️  wheat/rostov_ru Jul 2026  z=-2.12  SIGNIFICANT BELOW NORMAL
+  ⚠️  corn/illinois_us Sep 2026  z=-2.06  SIGNIFICANT BELOW NORMAL
   ⚠️  wheat/kansas_us May 2026  z=-1.66  MODERATE BELOW NORMAL
   ⚠️  corn/illinois_us May 2026  z=-1.60  MODERATE BELOW NORMAL
 
@@ -30,12 +31,12 @@
 
 [4] NDVI VELOCITY TREND (season direction)
 
-  corn     illinois_us             velocity=-0.01450 ↓  trend=no trend  τ=-0.527
-  corn     iowa_us                 velocity=0.05258 ↑  trend=increasing  τ=0.949
-  cotton   north_texas_us          velocity=-0.02625 ↓  trend=no trend  τ=-0.667
+  corn     illinois_us             velocity=-0.14517 ↓  trend=no trend  τ=-0.6
+  corn     iowa_us                 velocity=-0.05025 ↓  trend=no trend  τ=0.2
+  cotton   north_texas_us          velocity=-0.00430 →  trend=no trend  τ=-0.2
   cotton   south_texas_us          velocity=-0.01340 ↓  trend=no trend  τ=0.4
   cotton   xinjiang_tarim_cn       velocity=-0.02140 ↓  trend=insufficient data  τ=nan
-  soy      illinois_us             velocity=-0.01512 ↓  trend=no trend  τ=-0.527
+  soy      illinois_us             velocity=-0.13667 ↓  trend=no trend  τ=-0.6
   wheat    kansas_us               velocity=0.00086 →  trend=no trend  τ=0.0
   wheat    rostov_ru               velocity=-0.01466 ↓  trend=no trend  τ=-0.6
 

@@ -369,3 +369,4 @@ timestamp,alert,commodity,region_id,as_of_date,yield_surprise,current_ndvi_veloc
 2026-10-11 12:21 UTC,VELOCITY_GREENUP: cotton/north_texas_us dNDVI/dt = +0.0313/day as of 2026-10-08,cotton,north_texas_us,2026-10-11,,0.03126
 2026-10-12 14:47 UTC,VELOCITY_GREENUP: cotton/north_texas_us dNDVI/dt = +0.0313/day as of 2026-10-08,cotton,north_texas_us,2026-10-12,,0.03126
 2026-10-13 13:52 UTC,VELOCITY_STRESS: soy/illinois_us dNDVI/dt = -0.0570/day as of 2026-10-09,soy,illinois_us,2026-10-13,,-0.05695
+2026-10-14 11:29 UTC,VELOCITY_STRESS: soy/illinois_us dNDVI/dt = -0.0531/day as of 2026-10-09,soy,illinois_us,2026-10-14,,-0.05312

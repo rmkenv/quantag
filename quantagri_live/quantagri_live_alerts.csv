@@ -377,3 +377,6 @@ timestamp,alert,commodity,region_id,as_of_date,yield_surprise,current_ndvi_veloc
 2026-10-19 12:32 UTC,VELOCITY_GREENUP: soy/mato_grosso_br dNDVI/dt = +0.0335/day as of 2026-10-17,soy,mato_grosso_br,2026-10-19,,0.03352
 2026-10-19 12:38 UTC,VELOCITY_STRESS: soy/illinois_us dNDVI/dt = -0.0433/day as of 2026-10-09,soy,illinois_us,2026-10-19,,-0.0433
 2026-10-19 12:32 UTC,VELOCITY_GREENUP: cotton/north_texas_us dNDVI/dt = +0.0264/day as of 2026-10-08,cotton,north_texas_us,2026-10-19,,0.02637
+2026-10-20 11:07 UTC,VELOCITY_GREENUP: cotton/north_texas_us dNDVI/dt = +0.0264/day as of 2026-10-08,cotton,north_texas_us,2026-10-20,,0.02637
+2026-10-20 11:07 UTC,VELOCITY_GREENUP: soy/mato_grosso_br dNDVI/dt = +0.0340/day as of 2026-10-17,soy,mato_grosso_br,2026-10-20,,0.03395
+2026-10-20 11:13 UTC,VELOCITY_STRESS: soy/illinois_us dNDVI/dt = -0.0433/day as of 2026-10-09,soy,illinois_us,2026-10-20,,-0.0433

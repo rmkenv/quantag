@@ -400,3 +400,5 @@ timestamp,alert,commodity,region_id,as_of_date,yield_surprise,current_ndvi_veloc
 2026-10-28 12:30 UTC,VELOCITY_STRESS: soy/illinois_us dNDVI/dt = -0.0643/day as of 2026-10-25,soy,illinois_us,2026-10-28,,-0.06428
 2026-10-29 12:31 UTC,VELOCITY_GREENUP: soy/mato_grosso_br dNDVI/dt = +0.0326/day as of 2026-10-17,soy,mato_grosso_br,2026-10-29,,0.0326
 2026-10-29 12:37 UTC,VELOCITY_STRESS: soy/illinois_us dNDVI/dt = -0.3010/day as of 2026-10-25,soy,illinois_us,2026-10-29,,-0.30101
+2026-10-30 12:22 UTC,VELOCITY_GREENUP: soy/mato_grosso_br dNDVI/dt = +0.0326/day as of 2026-10-17,soy,mato_grosso_br,2026-10-30,,0.0326
+2026-10-30 12:29 UTC,VELOCITY_STRESS: soy/illinois_us dNDVI/dt = -0.1356/day as of 2026-10-25,soy,illinois_us,2026-10-30,,-0.13565

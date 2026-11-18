@@ -413,3 +413,4 @@ timestamp,alert,commodity,region_id,as_of_date,yield_surprise,current_ndvi_veloc
 2026-11-15 13:39 UTC,VELOCITY_GREENUP: soy/mato_grosso_br dNDVI/dt = +0.0242/day as of 2026-11-02,soy,mato_grosso_br,2026-11-15,,0.02421
 2026-11-16 15:11 UTC,VELOCITY_GREENUP: soy/mato_grosso_br dNDVI/dt = +0.0295/day as of 2026-11-02,soy,mato_grosso_br,2026-11-16,,0.02945
 2026-11-17 15:40 UTC,VELOCITY_GREENUP: soy/mato_grosso_br dNDVI/dt = +0.0295/day as of 2026-11-02,soy,mato_grosso_br,2026-11-17,,0.02945
+2026-11-18 15:19 UTC,VELOCITY_GREENUP: soy/mato_grosso_br dNDVI/dt = +0.0295/day as of 2026-11-02,soy,mato_grosso_br,2026-11-18,,0.02945
